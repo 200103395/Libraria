@@ -18,6 +18,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	//fmt.Println(store.DropTable("book"))
+
 	email := NewEmailConnection()
 	if err != nil {
 		log.Fatal(err)
@@ -25,5 +27,8 @@ func main() {
 
 	lib := NewLibServer(":8000", store, *email)
 
+	go store.ClearRequests()
+
 	lib.Run()
+
 }

@@ -10,7 +10,11 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"strconv"
+	"time"
+)
+
+const (
+	expiration = 20
 )
 
 type LibServer struct {
@@ -38,7 +42,8 @@ func (s *LibServer) Run() {
 	r.HandleFunc("/account/register", makeHTTPHandleFunc(s.AccountCreateHandler)) // Email confirmation + new db table
 	r.HandleFunc("/account/login", makeHTTPHandleFunc(s.AccountLoginHandler))     // JWT storing information
 	r.HandleFunc("/account/{id}", withJWTAuth(makeHTTPHandleFunc(s.AccountHandler), s.store))
-	r.HandleFunc("/account", makeHTTPHandleFunc(s.AccountsHandler))             // Why?
+	r.HandleFunc("/account", makeHTTPHandleFunc(s.AccountsHandler)) // Why?
+	r.HandleFunc("/password_reset/{tag}", makeHTTPHandleFunc(s.PasswordResetConfirmHandler))
 	r.HandleFunc("/password_reset", makeHTTPHandleFunc(s.PasswordResetHandler)) // Email sent + new query
 
 	r.HandleFunc("/library/register", makeHTTPHandleFunc(s.LibraryCreateHandler)) // Email conf + new db table
@@ -54,8 +59,89 @@ func (s *LibServer) Run() {
 	}
 }
 
-func (c *LibServer) PasswordResetHandler(w http.ResponseWriter, r *http.Request) error {
-	return nil
+func (s *LibServer) PasswordResetConfirmHandler(w http.ResponseWriter, r *http.Request) error {
+	if r.Method == "GET" {
+
+	}
+	if r.Method == "POST" {
+		token := getTAG(r)
+		req, err := s.store.GetPasswordReset(token)
+		if err != nil {
+			return WriteJSON(w, http.StatusBadRequest, "Incorrect link1") //relocate
+		}
+		var newPw NewPassword
+		if err := json.NewDecoder(r.Body).Decode(&newPw); err != nil {
+			return WriteJSON(w, http.StatusBadRequest, "Incorrect link2")
+		}
+		if newPw.NewPassword != newPw.NewPasswordConfirm {
+			return WriteJSON(w, http.StatusBadRequest, "Incorrect link2")
+		}
+		user, err1 := s.store.GetAccountByEmail(req.Email)
+		library, err2 := s.store.GetLibraryByEmail(req.Email)
+		if err1 != nil && err2 != nil {
+			return WriteJSON(w, http.StatusBadRequest, "Incorrect link3") //relocate
+		}
+		if err1 == nil {
+			user.Password = newPw.NewPassword
+			err = NewAccount(user)
+			if err != nil {
+				return WriteJSON(w, http.StatusBadRequest, "Incorrect link4") //relocate
+			}
+			s.store.UpdateAccount(user)
+		} else {
+			library.Password = newPw.NewPassword
+			err = NewLibraryAccount(library)
+			if err != nil {
+				return WriteJSON(w, http.StatusBadRequest, "Incorrect link") //relocate
+			}
+			s.store.UpdateLibrary(library)
+		}
+		return WriteJSON(w, http.StatusOK, "Password has been changed")
+	}
+	return errors.New("Method not allowed")
+}
+
+func (s *LibServer) PasswordResetHandler(w http.ResponseWriter, r *http.Request) error {
+	if r.Method != "POST" {
+		return errors.New("Method not allowed")
+	}
+	var jspost struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&jspost); err != nil {
+		return err
+	}
+	fmt.Println(jspost)
+	user, err1 := s.store.GetAccountByEmail(jspost.Email)
+	library, err2 := s.store.GetLibraryByEmail(jspost.Email)
+	if err1 != nil && err2 != nil {
+		return WriteJSON(w, http.StatusBadRequest, "Incorrect email")
+	}
+	firstName := user.FirstName
+	lastName := user.LastName
+	if err1 != nil {
+		firstName = library.Name
+	}
+	var alphaNumRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
+	emailVerRandRunes := make([]rune, 64)
+	for i := 0; i < 64; i++ {
+		emailVerRandRunes[i] = alphaNumRunes[rand.Intn(len(alphaNumRunes)-1)]
+	}
+	expiresat := time.Now().Add(expiration * time.Minute).UTC()
+	err := s.email.PasswordResetMessage([]string{jspost.Email}, firstName, lastName, "http://localhost:8000/password_reset/"+string(emailVerRandRunes))
+	if err != nil {
+		return WriteJSON(w, http.StatusBadRequest, "Error sending email, please try again later")
+	}
+	request := &PasswordResetRequest{
+		Email:     jspost.Email,
+		Token:     string(emailVerRandRunes),
+		ExpiresAt: expiresat,
+	}
+	err = s.store.CreatePasswordReset(request)
+	if err != nil {
+		return WriteJSON(w, http.StatusBadRequest, "Error connecting to db, please try again later")
+	}
+	return WriteJSON(w, http.StatusOK, "Message has been sent to email: "+jspost.Email)
 }
 
 func (s *LibServer) HomeHandler(w http.ResponseWriter, r *http.Request) error {
@@ -101,6 +187,48 @@ func (s *LibServer) LibraryCreateHandler(w http.ResponseWriter, r *http.Request)
 	return nil
 }
 
+func (s *LibServer) GetLibraryHandler(w http.ResponseWriter, r *http.Request) error {
+	id, err := getID(r)
+	if err != nil {
+		return err
+	}
+	library, err := s.store.GetLibraryByID(id)
+	if err != nil {
+		return err
+	}
+	data, _ := json.Marshal(library)
+	w.Header().Add("Content-Type", "application/json")
+	w.Write(data)
+	return nil
+}
+
+func (s *LibServer) LibraryLoginHandler(w http.ResponseWriter, r *http.Request) error {
+	if r.Method != "POST" {
+		return fmt.Errorf("method not allowed %s", r.Method)
+	}
+
+	var req LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return err
+	}
+
+	acc, err := s.store.GetLibraryByEmail(req.Email)
+	if err != nil {
+		return err
+	}
+
+	if !acc.ValidPassword(req.Password) {
+		return fmt.Errorf("not authenticated")
+	}
+
+	token, err := createLibraryJWT(acc)
+	if err != nil {
+		return err
+	}
+
+	return WriteJSON(w, http.StatusOK, token)
+}
+
 func (s *LibServer) AccountHandler(w http.ResponseWriter, r *http.Request) error {
 	if r.Method == "GET" {
 		return s.GetAccountHandler(w, r)
@@ -122,21 +250,6 @@ func (s *LibServer) GetAccountHandler(w http.ResponseWriter, r *http.Request) er
 	/*data, _ := json.Marshal(accounts)
 	w.Header().Add("Content-Type", "application/json")
 	w.Write(data)*/
-	return nil
-}
-
-func (s *LibServer) GetLibraryHandler(w http.ResponseWriter, r *http.Request) error {
-	id, err := getID(r)
-	if err != nil {
-		return err
-	}
-	library, err := s.store.GetLibraryByID(id)
-	if err != nil {
-		return err
-	}
-	data, _ := json.Marshal(library)
-	w.Header().Add("Content-Type", "application/json")
-	w.Write(data)
 	return nil
 }
 
@@ -182,34 +295,9 @@ func (s *LibServer) AccountLoginHandler(w http.ResponseWriter, r *http.Request) 
 		return err
 	}
 
-	return WriteJSON(w, http.StatusOK, token)
-}
+	ans := []any{"User have been successfully logged in", token}
 
-func (s *LibServer) LibraryLoginHandler(w http.ResponseWriter, r *http.Request) error {
-	if r.Method != "POST" {
-		return fmt.Errorf("method not allowed %s", r.Method)
-	}
-
-	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		return err
-	}
-
-	acc, err := s.store.GetLibraryByEmail(req.Email)
-	if err != nil {
-		return err
-	}
-
-	if !acc.ValidPassword(req.Password) {
-		return fmt.Errorf("not authenticated")
-	}
-
-	token, err := createLibraryJWT(acc)
-	if err != nil {
-		return err
-	}
-
-	return WriteJSON(w, http.StatusOK, token)
+	return WriteJSON(w, http.StatusOK, ans)
 }
 
 func (s *LibServer) AccountCreateHandler(w http.ResponseWriter, r *http.Request) error {
@@ -238,6 +326,7 @@ func (s *LibServer) AccountCreateHandler(w http.ResponseWriter, r *http.Request)
 		emailVerRandRunes[i] = alphaNumRunes[rand.Intn(len(alphaNumRunes)-1)]
 	}
 	print(emailVerRandRunes)
+	expiresat := time.Now().Add(expiration * time.Minute).UTC()
 
 	req := CreateRequest{
 		FirstName:     account.FirstName,
@@ -247,12 +336,13 @@ func (s *LibServer) AccountCreateHandler(w http.ResponseWriter, r *http.Request)
 		Address:       account.Address,
 		ContactNumber: account.ContactNumber,
 		Tag:           string(emailVerRandRunes),
+		ExpiresAt:     expiresat,
 	}
 	err = s.store.CreateRequest(&req)
 	if err != nil {
 		return err
 	}
-	s.email.EmailConfirmationMessage([]string{req.Email}, req.FirstName, req.LastName, "localhost:8000/account/confirm/"+req.Email+"/"+req.Tag)
+	s.email.EmailConfirmationMessage([]string{req.Email}, req.FirstName, req.LastName, "https://localhost:8000/account/confirm/"+req.Email+"/"+req.Tag)
 	ans := []any{fmt.Sprintf("Message was sent to %s , to confirm account please follow the instructions in the message", req.Email), req}
 	WriteJSON(w, http.StatusOK, ans)
 	return nil
@@ -300,34 +390,6 @@ func WriteJSON(w http.ResponseWriter, status int, v any) error {
 	return json.NewEncoder(w).Encode(v)
 }
 
-func makeHTTPHandleFunc(f LibFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if err := f(w, r); err != nil {
-			WriteJSON(w, http.StatusBadRequest, LibError{Error: err.Error()})
-		}
-	}
-}
-
-func getID(r *http.Request) (int, error) {
-	idStr := mux.Vars(r)["id"]
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		return id, fmt.Errorf("invalid id given %s", idStr)
-	}
-	return id, nil
-}
-
-func getMAIL(r *http.Request) string {
-	mail := mux.Vars(r)["email"]
-	return mail
-}
-
-func getTAG(r *http.Request) string {
-	tag := mux.Vars(r)["tag"]
-	return tag
-}
-
-// eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50SUQiOjEsImV4cGlyZXNBdCI6MTUwMDB9.xkJ1gVSN-xQK5xVmmsTN_rKMoLLm0xwz0lqjzYu5WoI
 func withJWTAuth(handlerFunc http.HandlerFunc, s Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("calling JWT auth middleware")
