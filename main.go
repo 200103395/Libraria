@@ -1,6 +1,9 @@
 package main
 
 import (
+	"Libraria/controllers"
+	"Libraria/database"
+	"Libraria/mail"
 	"fmt"
 	_ "github.com/lib/pq"
 	"log"
@@ -8,7 +11,7 @@ import (
 
 func main() {
 	fmt.Println("Hello, World!")
-	store, err := NewPostgresStorage()
+	store, err := database.NewPostgresStorage()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -20,12 +23,12 @@ func main() {
 
 	//fmt.Println(store.DropTable("book"))
 
-	email := NewEmailConnection()
+	email := mail.NewEmailConnection()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	lib := NewLibServer(":8000", store, *email)
+	lib := controllers.NewLibServer(":8000", store, *email)
 
 	go store.ClearRequests()
 
