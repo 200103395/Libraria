@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -17,8 +18,19 @@ func (s *LibServer) LibraryHandler(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
-	return WriteJSON(w, http.StatusOK, libraries)
-	// return HTML file
+	html, err := os.ReadFile("static/library.html")
+	if err != nil {
+		return err
+	}
+	libJson, err := json.Marshal(libraries)
+	if err != nil {
+		return err
+	}
+	if _, err = fmt.Fprintf(w, "<script>var libraries = %s;</script>", libJson); err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, string(html))
+	return err
 }
 
 func (s *LibServer) LibraryCreateHandler(w http.ResponseWriter, r *http.Request) error {
@@ -26,15 +38,19 @@ func (s *LibServer) LibraryCreateHandler(w http.ResponseWriter, r *http.Request)
 		return utils.MethodNotAllowed(w)
 	}
 	if r.Method == "GET" {
+		html, err := os.ReadFile("static/libraryRegister.html")
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(w, string(html))
+		return err
 		// return HTML file
 	}
 	var library types.LibraryAccount
-	err := json.NewDecoder(r.Body).Decode(&library)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&library); err != nil {
 		return err
 	}
-	err = library.ValidateAccount()
-	if err != nil {
+	if err := library.ValidateAccount(); err != nil {
 		return err
 	}
 	isExists, err := s.store.CheckEmail(library.Email)
@@ -52,16 +68,14 @@ func (s *LibServer) LibraryCreateHandler(w http.ResponseWriter, r *http.Request)
 		Email:         library.Email,
 		Address:       library.Address,
 		ContactNumber: library.ContactNumber,
-		Tag:           utils.MakeToken(),
+		Tag:           s.store.MakeToken("lib_requests"),
 		ExpiresAt:     expiresAt,
 	}
-	err = s.store.CreateLibRequest(&req)
-	if err != nil {
+	if err = s.store.CreateLibRequest(&req); err != nil {
 		return err
 	}
 	appeal := req.Name + " Library"
-	err = s.email.EmailConfirmationMessage(req.Email, appeal, domain+"/account/confirm/"+req.Tag)
-	if err != nil {
+	if err = s.email.EmailConfirmationMessage(req.Email, appeal, domain+"/account/confirm/"+req.Tag); err != nil {
 		return err
 	}
 	ans := []any{fmt.Sprintf("Message was sent to %s , to confirm account please follow the instructions in the message", req.Email), req}
@@ -98,9 +112,12 @@ func (s *LibServer) LibraryConfirmHandler(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		// DO SOMETHING
 	}
-	ans := []any{fmt.Sprintf("Library %s have been successfully confirmed", library.Name), library}
-	return WriteJSON(w, http.StatusOK, ans)
-	// show success page
+	html, err := os.ReadFile("static/libraryConfirm.html")
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, string(html))
+	return err
 }
 
 func (s *LibServer) GetLibraryHandler(w http.ResponseWriter, r *http.Request) error {
@@ -111,12 +128,26 @@ func (s *LibServer) GetLibraryHandler(w http.ResponseWriter, r *http.Request) er
 	if err != nil {
 		return err
 	}
-	library, err := s.store.GetLibraryByID(id)
+	lib, err := s.store.GetLibraryByID(id)
 	if err != nil {
 		return err
 	}
-	return WriteJSON(w, http.StatusOK, library)
-	// show library page HTML
+	html, err := os.ReadFile("static/libraryGet.html")
+	if err != nil {
+		return err
+	}
+	jsonLib := lib.ConvertToWeb()
+	jsonMar, err := json.Marshal(jsonLib)
+	if err != nil {
+		return err
+	}
+	if _, err = fmt.Fprintf(w, "<script id=\"headScript\">var lib = %s;</script>", jsonMar); err != nil {
+		return err
+	}
+	if _, err = fmt.Fprintf(w, string(html)); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *LibServer) LibraryLoginHandler(w http.ResponseWriter, r *http.Request) error {
@@ -124,7 +155,12 @@ func (s *LibServer) LibraryLoginHandler(w http.ResponseWriter, r *http.Request) 
 		return utils.MethodNotAllowed(w)
 	}
 	if r.Method == "GET" {
-		// return HTML file
+		html, err := os.ReadFile("static/libraryLogin.html")
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(w, string(html))
+		return err
 	}
 
 	var req types.LoginRequest
@@ -146,6 +182,13 @@ func (s *LibServer) LibraryLoginHandler(w http.ResponseWriter, r *http.Request) 
 		return err
 	}
 
-	return WriteJSON(w, http.StatusOK, token)
-	// show success page
+	cookie := http.Cookie{
+		Name:     "x-jwt-token",
+		Value:    token,
+		HttpOnly: true,
+		Path:     "/",
+		Expires:  time.Now().Add(time.Minute * 15),
+	}
+	http.SetCookie(w, &cookie)
+	return WriteJSON(w, http.StatusOK, cookie)
 }

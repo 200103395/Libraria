@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"math/rand"
 	"net/http"
 	"strconv"
 )
@@ -13,15 +12,6 @@ func WriteJSON(w http.ResponseWriter, status int, v any) error {
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(status)
 	return json.NewEncoder(w).Encode(v)
-}
-
-func MakeToken() string {
-	var alphaNumRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
-	emailVerRandRunes := make([]rune, 64)
-	for i := 0; i < 64; i++ {
-		emailVerRandRunes[i] = alphaNumRunes[rand.Intn(len(alphaNumRunes)-1)]
-	}
-	return string(emailVerRandRunes)
 }
 
 func GetID(r *http.Request) (int, error) {

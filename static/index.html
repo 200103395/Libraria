@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<h1>Main page</h1>
+<br>
+
+<script>
+    // Function to display JSON data as list items
+    function displayJsonData() {
+        var list = document.getElementById("jsonList");
+        jsonData.forEach(function(item) {
+            var listItem = document.createElement("li");
+            listItem.textContent = "Name: " + item.name + ", Age: " + item.age;
+            list.appendChild(listItem);
+        });
+    }
+</script>
+</body>
+</html>

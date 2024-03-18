@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <h1>Libraries</h1>
+    <div id="libraries">
+    </div>
+</body>
+<script>
+    function display() {
+        libs = document.getElementById("libraries");
+        for(var key in libraries) {
+            var lib = libraries[key];
+            var item = document.createElement('ul');
+            var name = document.createElement('li');
+            var email = document.createElement('li');
+            var address = document.createElement('li');
+            var number = document.createElement('li');
+            name.textContent = lib.libraryName;
+            email.textContent = lib.email;
+            address.textContent = lib.address;
+            number.textContent = lib.contactNumber;
+            item.append(name, email, address, number);
+            libs.append(item);
+        }
+    }
+    window.onload = display;
+</script>
+</html>

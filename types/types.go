@@ -47,6 +47,14 @@ type LibraryAccount struct {
 	ContactNumber string `json:"contactNumber"`
 }
 
+type LibraryWeb struct {
+	ID            uint   `json:"id"`
+	Email         string `json:"email"`
+	Name          string `json:"libraryName"`
+	Address       string `json:"address"`
+	ContactNumber string `json:"contactNumber"`
+}
+
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -86,6 +94,16 @@ type Borrow struct {
 	AccountID  uint      `json:"accountID"`
 	LibraryID  uint      `json:"libraryID"`
 	BorrowedAt time.Time `json:"borrowedAt"`
+}
+
+func (lib *LibraryAccount) ConvertToWeb() (webLibs *LibraryWeb) {
+	return &LibraryWeb{
+		ID:            lib.ID,
+		Email:         lib.Email,
+		Name:          lib.Name,
+		Address:       lib.Address,
+		ContactNumber: lib.ContactNumber,
+	}
 }
 
 func (account *Account) Pointers() (*uint, *string, *string, *string, *string, *string, *string) {

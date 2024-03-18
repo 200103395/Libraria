@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -28,8 +29,34 @@ func (s *LibServer) GetAccountHandler(w http.ResponseWriter, r *http.Request) er
 	if err != nil {
 		return err
 	}
-	ans := []any{"User is logged in", account}
-	return WriteJSON(w, http.StatusOK, ans)
+	html, err := os.ReadFile("static/accountGet.html")
+	if err != nil {
+		return err
+	}
+	jsonAcc := struct {
+		FirstName     string `json:"firstName"`
+		LastName      string `json:"lastName"`
+		Email         string `json:"email"`
+		Address       string `json:"address"`
+		ContactNumber string `json:"contactNumber"`
+	}{
+		account.FirstName,
+		account.LastName,
+		account.Email,
+		account.Address,
+		account.ContactNumber,
+	}
+	jsonAccMarsh, err := json.Marshal(jsonAcc)
+	if err != nil {
+		return err
+	}
+	if _, err = fmt.Fprintf(w, "<script id=\"headScript\">var account = %s;</script>", jsonAccMarsh); err != nil {
+		return err
+	}
+	if _, err = fmt.Fprintf(w, string(html)); err != nil {
+		return err
+	}
+	return nil
 	// show account HTML page
 }
 
@@ -38,9 +65,17 @@ func (s *LibServer) AccountLoginHandler(w http.ResponseWriter, r *http.Request) 
 		return utils.MethodNotAllowed(w)
 	}
 	if r.Method == "GET" {
+		html, err := os.ReadFile("static/accountLogin.html")
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(w, string(html))
+		return err
+		//return WriteJSON(w, http.StatusOK, string(html))
 		// return HTML file
 	}
 	var req types.LoginRequest
+	fmt.Println(req)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return err
 	}
@@ -49,20 +84,23 @@ func (s *LibServer) AccountLoginHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		return err
 	}
-
 	if !acc.ValidPassword(req.Password) {
 		return utils.NotAuthenticated(w)
 	}
-
 	token, err := createJWT(acc.Email)
 	if err != nil {
 		return err
 	}
-
-	ans := []any{"User have been successfully logged in", token}
-
-	return WriteJSON(w, http.StatusOK, ans)
-	// redirect to main page
+	cookie := http.Cookie{
+		Name:     "x-jwt-token",
+		Value:    token,
+		HttpOnly: true,
+		Path:     "/",
+		Expires:  time.Now().Add(time.Minute * 15),
+	}
+	http.SetCookie(w, &cookie)
+	return WriteJSON(w, http.StatusOK, cookie)
+	// redirect
 }
 
 func (s *LibServer) AccountCreateHandler(w http.ResponseWriter, r *http.Request) error {
@@ -70,19 +108,23 @@ func (s *LibServer) AccountCreateHandler(w http.ResponseWriter, r *http.Request)
 		return utils.MethodNotAllowed(w)
 	}
 	if r.Method == "GET" {
-		// return HTML file
+		html, err := os.ReadFile("static/accountRegister.html")
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(w, string(html))
+		return err
 	}
 
 	var account types.Account
-	err := json.NewDecoder(r.Body).Decode(&account)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
 		return err
 	}
-	err = account.ValidateAccount()
-	if err != nil {
+	if err := account.ValidateAccount(); err != nil {
 		return err
 	}
 	isExists, err := s.store.CheckEmail(account.Email)
+
 	if err != nil {
 		return err
 	}
@@ -98,15 +140,17 @@ func (s *LibServer) AccountCreateHandler(w http.ResponseWriter, r *http.Request)
 		Email:         account.Email,
 		Address:       account.Address,
 		ContactNumber: account.ContactNumber,
-		Tag:           utils.MakeToken(),
+		Tag:           s.store.MakeToken("user_requests"),
 		ExpiresAt:     expiresAt,
 	}
+	fmt.Println(req)
 	err = s.store.CreateUserRequest(&req)
 	if err != nil {
 		return err
 	}
 	appeal := req.FirstName + " " + req.LastName
 	err = s.email.EmailConfirmationMessage(req.Email, appeal, domain+"/account/confirm/"+req.Tag)
+	fmt.Println(err)
 	if err != nil {
 		return err
 	}
@@ -144,7 +188,7 @@ func (s *LibServer) AccountConfirm(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		// do something
 	}
-	ans := []any{fmt.Sprintf("User %s have been successfully confirmed", account.FirstName), account}
-	return WriteJSON(w, http.StatusOK, ans)
-	// return HTML success page
+	html, err := os.ReadFile("static/accountConfirm.html")
+	_, err = fmt.Fprintf(w, string(html))
+	return err
 }

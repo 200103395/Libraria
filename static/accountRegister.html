@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <form method="post" id="myForm">
+        <label for="firstName">First Name: </label>
+        <input id="firstName" name="firstName" type="text" required><br>
+        <label for="lastName">Last Name: </label>
+        <input id="lastName" name="lastName" type="text" required><br>
+        <label for="email">Email: </label>
+        <input id="email" name="email" type="text" required><br>
+        <label for="password">Password: </label>
+        <input id="password" name="password" type="password" required><br>
+        <label for="passwordConfirm">Confirm Password: </label>
+        <input id="passwordConfirm" name="passwordConfirm" type="password" required><br>
+        <label for="address">Address: </label>
+        <input id="address" name="address" type="text"><br>
+        <label for="contactNumber">Contact Number: </label>
+        <input id="contactNumber" name="contactNumber" type="text"><br>
+        <input type="submit" value="Register">
+    </form>
+    <script>
+        document.getElementById("myForm").addEventListener("submit", function(event){
+            event.preventDefault();
+            var formData = new FormData(this);
+
+            var jsonData = {};
+            formData.forEach(function (value, key){
+                jsonData[key] = value;
+            });
+
+            fetch("/account/register",{
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(jsonData)
+            }).then(response => {
+                if(response.ok) {
+                    window.location.href = "/"
+                    alert("Registration successful");
+                } else {
+                    alert("Error while registration");
+                    console.log(response);
+                }
+            }).catch(error => {
+                console.error(error);
+            });
+        });
+    </script>
+</body>
+</html>

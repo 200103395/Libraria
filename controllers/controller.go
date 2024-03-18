@@ -10,6 +10,7 @@ import (
 	"fmt"
 	jwt "github.com/golang-jwt/jwt/v4"
 	"github.com/gorilla/mux"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -61,6 +62,7 @@ func (s *LibServer) Run() {
 	r.HandleFunc("/password_reset/{tag}", MakeHTTPHandleFunc(s.PasswordResetConfirmHandler))
 	r.HandleFunc("/password_reset", MakeHTTPHandleFunc(s.PasswordResetHandler))
 
+	r.HandleFunc("/library/confirm/{tag}", MakeHTTPHandleFunc(s.LibraryConfirmHandler))
 	r.HandleFunc("/library/register", MakeHTTPHandleFunc(s.LibraryCreateHandler))
 	r.HandleFunc("/library/login", MakeHTTPHandleFunc(s.LibraryLoginHandler))
 	r.HandleFunc("/library/{id}", MakeHTTPHandleFunc(s.GetLibraryHandler))
@@ -74,19 +76,31 @@ func (s *LibServer) Run() {
 }
 
 func (s *LibServer) HomeHandler(w http.ResponseWriter, r *http.Request) error {
-	if r.Method != "POST" {
+	if r.Method != "GET" {
 		return utils.MethodNotAllowed(w)
 	}
 	readJWT(r, s.store)
-	_, err := w.Write([]byte("Hello, World!")) //return HTML for page
+	index, err := ioutil.ReadFile("static/index.html")
+	if err != nil {
+		return err
+	}
+	// Convert JSON data to bytes
+	if _, err = fmt.Fprintf(w, string(index)); err != nil {
+		return err
+	}
+	_, err = w.Write([]byte("Hello, World!")) //return HTML for page
 	return err
 }
 
 func (s *LibServer) AboutHandler(w http.ResponseWriter, r *http.Request) error {
-	if r.Method != "POST" {
+	if r.Method != "GET" {
 		return utils.MethodNotAllowed(w)
 	}
-	_, err := w.Write([]byte("Hello, World!")) // return HTML for page
+	html, err := os.ReadFile("static/about.html")
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, string(html))
 	return err
 }
 
@@ -95,10 +109,18 @@ func (s *LibServer) PasswordResetConfirmHandler(w http.ResponseWriter, r *http.R
 		return utils.MethodNotAllowed(w)
 	}
 	if r.Method == "GET" {
-		// return HTML file
+		html, err := os.ReadFile("static/passwordConfirm.html")
+		if err != nil {
+			return err
+		}
+		token := utils.GetTAG(r)
+		_, err = fmt.Fprintf(w, fmt.Sprintf("<script> var token = \"%s\"; </script>", token))
+		_, err = fmt.Fprintf(w, string(html))
+		return err
 	}
 	token := utils.GetTAG(r)
 	req, err := s.store.GetPasswordReset(token)
+	fmt.Println(req, err, token)
 	if err != nil {
 		return WriteJSON(w, http.StatusBadRequest, "Incorrect link") //relocate
 	}
@@ -106,12 +128,14 @@ func (s *LibServer) PasswordResetConfirmHandler(w http.ResponseWriter, r *http.R
 	if err = json.NewDecoder(r.Body).Decode(&newPw); err != nil {
 		return WriteJSON(w, http.StatusBadRequest, "Incorrect link")
 	}
+	fmt.Println(newPw)
 	if newPw.NewPassword != newPw.NewPasswordConfirm {
 		return WriteJSON(w, http.StatusBadRequest, "Incorrect link")
 	}
 
 	user, err1 := s.store.GetAccountByEmail(req.Email)
 	library, err2 := s.store.GetLibraryByEmail(req.Email)
+	fmt.Println(err1, err2)
 	if err1 != nil && err2 != nil {
 		return WriteJSON(w, http.StatusBadRequest, "Incorrect link") //relocate
 	}
@@ -138,13 +162,21 @@ func (s *LibServer) PasswordResetHandler(w http.ResponseWriter, r *http.Request)
 		return utils.MethodNotAllowed(w)
 	}
 	if r.Method == "GET" {
-		// return HTML file
+		html, err := os.ReadFile("static/passwordReset.html")
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(w, string(html))
+		return err
 	}
 
 	var jspost struct {
 		Email string `json:"email"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&jspost); err != nil {
+		return err
+	}
+	if err := s.store.CheckForRequest(jspost.Email); err != nil {
 		return err
 	}
 	user, err1 := s.store.GetAccountByEmail(jspost.Email)
@@ -156,10 +188,9 @@ func (s *LibServer) PasswordResetHandler(w http.ResponseWriter, r *http.Request)
 	expiresAt := time.Now().Add(expiration * time.Minute).UTC()
 	request := &types.PasswordResetRequest{
 		Email:     jspost.Email,
-		Token:     utils.MakeToken(),
+		Token:     s.store.MakeToken("password_reset"),
 		ExpiresAt: expiresAt,
 	}
-
 	appeal := ""
 	if err1 != nil {
 		appeal = library.Name + " Library"
@@ -168,10 +199,12 @@ func (s *LibServer) PasswordResetHandler(w http.ResponseWriter, r *http.Request)
 		appeal = user.FirstName + " " + user.LastName
 	}
 	err := s.email.PasswordResetMessage(request.Email, appeal, domain+"/password_reset/"+request.Token)
+
 	if err != nil {
 		return WriteJSON(w, http.StatusBadRequest, "Error sending email, please try again later")
 	}
 	err = s.store.CreatePasswordReset(request)
+
 	if err != nil {
 		return WriteJSON(w, http.StatusBadRequest, "Error connecting to db, please try again later")
 	}
@@ -188,8 +221,20 @@ func (s *LibServer) BookHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	book, err := s.store.GetBookByID(id)
-	return WriteJSON(w, http.StatusOK, book)
-	// HTML show
+	bookJson, err := json.Marshal(book)
+	if err != nil {
+		return err
+	}
+	html, err := os.ReadFile("static/bookGet.html")
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, fmt.Sprintf("<script>var book = %s;</script>", bookJson))
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, string(html))
+	return err
 }
 
 type LibFunc func(w http.ResponseWriter, r *http.Request) error
@@ -207,9 +252,8 @@ func WriteJSON(w http.ResponseWriter, status int, v any) error {
 func withJWTAuth(handlerFunc http.HandlerFunc, s database.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("calling JWT auth middleware")
-
-		tokenString := r.Header.Get("x-jwt-token")
-		token, err := validateJWT(tokenString)
+		tokenString, err := r.Cookie("x-jwt-token")
+		token, err := validateJWT(tokenString.Value)
 		if err != nil {
 			utils.PermissionDenied(w)
 			return
@@ -230,7 +274,7 @@ func withJWTAuth(handlerFunc http.HandlerFunc, s database.Storage) http.HandlerF
 		}
 
 		claims := token.Claims.(jwt.MapClaims)
-		if account.ID != uint(claims["accountID"].(float64)) {
+		if account.Email != claims["email"] {
 			utils.PermissionDenied(w)
 			return
 		}
@@ -283,7 +327,7 @@ func validateJWT(tokenString string) (*jwt.Token, error) {
 
 func createJWT(email string) (string, error) {
 	claims := &jwt.MapClaims{
-		"expiresAt": 15000,
+		"expiresAt": time.Now().Add(time.Minute * 5).Unix(),
 		"email":     email,
 	}
 

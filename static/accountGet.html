@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<h1 id="firstName"></h1>
+<h1 id="lastName"></h1>
+<h1 id="email"></h1>
+<h1 id="address"></h1>
+<h1 id="contactNumber"></h1>
+<script>
+  // Function to display JSON data as list items
+  function displayJsonData() {
+      var scriptInHead = document.getElementById("headScript");
+
+      // Extract the content of the script element
+      var scriptContent = scriptInHead.textContent;
+      console.log(account);
+    document.getElementById("firstName").innerText = account.firstName;
+    document.getElementById("lastName").innerText = account.lastName;
+    document.getElementById("email").innerText = account.email;
+    document.getElementById("address").innerText = account.address;
+    document.getElementById("contactNumber").innerText = account.contactNumber;
+  }
+
+  // Call the function when the page loads
+  window.onload = displayJsonData;
+</script>
+</body>
+</html>

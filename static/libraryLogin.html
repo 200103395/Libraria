@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+</head>
+<body>
+<form action="login" method="POST" id="myForm">
+    <label for="email">Email</label>
+    <input type="text" id="email" name="email" required><br>
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required><br>
+    <input type="submit" value="Sign in">
+</form>
+<script>
+    document.getElementById("myForm").addEventListener("submit", function(event){
+        event.preventDefault();
+        var formData = new FormData(this);
+
+        var jsonData = {};
+        formData.forEach(function (value, key){
+            jsonData[key] = value;
+        });
+
+        fetch("/library/login",{
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(jsonData)
+        }).then(response => {
+            if(response.ok) {
+                window.location.href = "/";
+                alert("Log in successful");
+            } else {
+                alert("Error while logging in");
+            }
+        }).catch(error => {
+            console.error(error);
+        });
+    });
+</script>
+</body>
+</html>

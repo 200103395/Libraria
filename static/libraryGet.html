@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<h1 id="libraryName"></h1>
+<h1 id="email"></h1>
+<h1 id="address"></h1>
+<h1 id="contactNumber"></h1>
+<script>
+    // Function to display JSON data as list items
+    function displayJsonData() {
+        console.log(lib);
+        document.getElementById("libraryName").innerText = lib.libraryName;
+        document.getElementById("email").innerText = lib.email;
+        document.getElementById("address").innerText = lib.address;
+        document.getElementById("contactNumber").innerText = lib.contactNumber;
+    }
+
+    // Call the function when the page loads
+    window.onload = displayJsonData;
+</script>
+</body>
+</html>
