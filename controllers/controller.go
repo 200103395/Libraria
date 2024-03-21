@@ -52,7 +52,7 @@ func (s *LibServer) Run() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", MakeHTTPHandleFunc(s.HomeHandler)) // get books & libs
 	r.HandleFunc("/about", MakeHTTPHandleFunc(s.AboutHandler))
-	r.HandleFunc("/search", MakeHTTPHandleFunc(s.HomeHandler)) // search & filter
+	r.HandleFunc("/search", MakeHTTPHandleFunc(s.SearchHandler)) // search & filter
 
 	r.HandleFunc("/account/confirm/{tag}", MakeHTTPHandleFunc(s.AccountConfirm))
 	r.HandleFunc("/account/register", MakeHTTPHandleFunc(s.AccountCreateHandler))
@@ -69,6 +69,7 @@ func (s *LibServer) Run() {
 	r.HandleFunc("/library", MakeHTTPHandleFunc(s.LibraryHandler))
 
 	r.HandleFunc("/book/{id}", MakeHTTPHandleFunc(s.BookHandler))
+	r.HandleFunc("/book/create", MakeHTTPHandleFunc(s.BookCreateHandler))
 
 	if err := http.ListenAndServe(s.listenAddr, r); err != nil {
 		log.Fatal(err)
@@ -213,6 +214,12 @@ func (s *LibServer) PasswordResetHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *LibServer) BookHandler(w http.ResponseWriter, r *http.Request) error {
+	if r.Method == "DELETE" {
+		return s.BookDeleteHandler(w, r)
+	}
+	if r.Method == "UPDATE" {
+		return s.BookUpdateHandler(w, r)
+	}
 	if r.Method != "GET" {
 		return utils.MethodNotAllowed(w)
 	}
@@ -235,6 +242,58 @@ func (s *LibServer) BookHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 	_, err = fmt.Fprintf(w, string(html))
 	return err
+}
+
+func (s *LibServer) BookDeleteHandler(w http.ResponseWriter, r *http.Request) error {
+	id, err := utils.GetID(r)
+	if err != nil {
+		return err
+	}
+	err = s.store.DeleteBookByID(id)
+	if err != nil {
+		return err
+	}
+	return WriteJSON(w, http.StatusOK, "Delete successful")
+}
+
+func (s *LibServer) BookUpdateHandler(w http.ResponseWriter, r *http.Request) error {
+	id, err := utils.GetID(r)
+	if err != nil {
+		return err
+	}
+	var book types.Book
+	err = json.NewDecoder(r.Body).Decode(&book)
+	if err != nil {
+		return err
+	}
+	book.ID = uint(id)
+	err = s.store.UpdateBook(book)
+	if err != nil {
+		return err
+	}
+	return WriteJSON(w, http.StatusOK, "Update successful")
+}
+
+func (s *LibServer) BookCreateHandler(w http.ResponseWriter, r *http.Request) error {
+	if r.Method == "GET" {
+		html, err := os.ReadFile("static/bookCreate.html")
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(w, string(html))
+		return err
+	}
+	if r.Method != "POST" {
+		return utils.MethodNotAllowed(w)
+	}
+	var book types.Book
+	if err := json.NewDecoder(r.Body).Decode(&book); err != nil {
+		return err
+	}
+	if err := s.store.CreateBook(&book); err != nil {
+		return err
+	}
+	return WriteJSON(w, http.StatusOK, "Book successfully created")
 }
 
 type LibFunc func(w http.ResponseWriter, r *http.Request) error

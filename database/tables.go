@@ -34,10 +34,10 @@ func (s *PostgresStorage) CreateTables() error {
 
 	query = `create table if not exists book(
     id SERIAL PRIMARY KEY,
-    name varchar(255),
-    author varchar(255),
+    name varchar(400),
+    author varchar(400),
     year INT NOT NULL,
-    genre TEXT[] NOT NULL,
+    genre TEXT NOT NULL,
     description TEXT,
     language VARCHAR(255),
     page_number INT

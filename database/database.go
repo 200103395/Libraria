@@ -8,6 +8,7 @@ import (
 	_ "github.com/lib/pq"
 	"math/rand"
 	"os"
+	"strings"
 )
 
 var dbuser string
@@ -37,7 +38,9 @@ type Storage interface {
 	CreateBook(book *types.Book) error
 	GetBooks() (*[]types.Book, error)
 	GetBookByID(id int) (*types.Book, error)
+	UpdateBook(book types.Book) error
 	DeleteBookByID(id int) error
+	SearchBookName(name string) (*[]types.Book, error)
 	CreatePasswordReset(request *types.PasswordResetRequest) error
 	GetPasswordReset(token string) (*types.PasswordResetRequest, error)
 	DeletePasswordReset(request *types.PasswordResetRequest) error
@@ -211,9 +214,37 @@ func (s *PostgresStorage) GetBookByID(id int) (*types.Book, error) {
 	return &book, err
 }
 
+func (s *PostgresStorage) SearchBookName(name string) (*[]types.Book, error) {
+	var books []types.Book
+	query := `select * from book where lower(name) like $1 or lower(author) like $1;`
+	name = "%" + strings.ToLower(name) + "%"
+	rows, err := s.DB.Query(query, name)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var book types.Book
+		if err := rows.Scan(book.Pointers()); err != nil {
+			fmt.Println(err)
+			continue
+		}
+		books = append(books, book)
+	}
+	if len(books) == 0 {
+		return nil, fmt.Errorf("no books found")
+	}
+	return &books, nil
+}
+
 func (s *PostgresStorage) DeleteBookByID(id int) error {
 	query := `delete from book where id = $1`
 	_, err := s.DB.Exec(query, id)
+	return err
+}
+
+func (s *PostgresStorage) UpdateBook(book types.Book) error {
+	query := `update book set name = $1, author = $2, year = $3, genre = $4, description = $5, language = $6, page_number = $7 where id = $8`
+	_, err := s.DB.Exec(query, book.Name, book.Author, book.Year, book.Genre, book.Description, book.Language, book.PageNumber, book.ID)
 	return err
 }
 

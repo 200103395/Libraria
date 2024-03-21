@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script>
+      function sendData() {
+        var input = document.getElementById("inputField").value;
+        var data = JSON.stringify({"inputValue": input});
+        console.log(input);
+        fetch("/search", {
+            method: "POST",
+            headers: {
+                "Content-type": "application/json"
+            },
+            body: data
+        }).then(response => response.json())
+            .then(data => {
+                var container = document.getElementById('containerDiv');
+                container.innerHTML = '';
+                data.forEach(jsonObject => {
+                    const div = document.createElement('div');
+                    Object.keys(jsonObject).forEach(key => {
+                        // Create a paragraph element for each key-value pair
+                        const paragraph = document.createElement('p');
+                        paragraph.textContent = `${key}: ${jsonObject[key]}`;
+                        div.appendChild(paragraph);
+                    });
+
+                    // Add some styling to each div
+                    div.style.border = "1px solid #ccc";
+                    div.style.padding = "10px";
+                    div.style.marginBottom = "10px";
+
+                    // Append the div to the container
+                    container.appendChild(div);
+                });
+        }).catch(error => {
+            console.error(error);
+        });
+        /*var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/search", true);
+        xhr.setRequestHeader("Content-type", "application/json");
+        xhr.onreadystatechange = function () {
+          if(xhr.readyState === 4 && xhr.readyState === 200) {
+            console.log("response");
+            console.log(xhr.responseText);
+          }
+        }
+        xhr.send(data);*/
+      }
+    </script>
+</head>
+<body>
+<h3>Type name or author</h3>
+<input type="text" id="inputField">
+<button onclick="sendData()">Search</button><br><br>
+<div id="containerDiv"></div>
+</body>
+</html>

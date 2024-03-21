@@ -16,7 +16,7 @@
 <script>
     document.getElementById("myForm").addEventListener("submit", function(event){
         event.preventDefault();
-        var formData = new FormData(thisA);
+        var formData = new FormData(this);
 
         var jsonData = {};
         formData.forEach(function (value, key){

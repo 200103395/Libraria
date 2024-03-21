@@ -73,14 +73,14 @@ type NewPassword struct {
 }
 
 type Book struct {
-	ID          uint     `json:"id"`
-	Name        string   `json:"name"`
-	Author      string   `json:"author"`
-	Year        int      `json:"year"`
-	Genre       []string `json:"genre"`
-	Description string   `json:"description"`
-	Language    string   `json:"language"`
-	PageNumber  uint     `json:"pageNumber"`
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	Author      string `json:"author"`
+	Year        uint   `json:"year"`
+	Genre       string `json:"genre"`
+	Description string `json:"description"`
+	Language    string `json:"language"`
+	PageNumber  uint   `json:"pageNumber"`
 }
 
 type LibraryBook struct {
@@ -104,6 +104,10 @@ func (lib *LibraryAccount) ConvertToWeb() (webLibs *LibraryWeb) {
 		Address:       lib.Address,
 		ContactNumber: lib.ContactNumber,
 	}
+}
+
+func (book *Book) Pointers() (*uint, *string, *string, *uint, *string, *string, *string, *uint) {
+	return &book.ID, &book.Name, &book.Author, &book.Year, &book.Genre, &book.Description, &book.Language, &book.PageNumber
 }
 
 func (account *Account) Pointers() (*uint, *string, *string, *string, *string, *string, *string) {
