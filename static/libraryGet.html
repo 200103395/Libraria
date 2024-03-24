@@ -3,15 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC65D4aIoayQlkDFJJzBtqKVpIQHSEM2_4&libraries=places"></script>
 </head>
 <body>
 <h1 id="libraryName"></h1>
 <h1 id="email"></h1>
 <h1 id="address"></h1>
 <h1 id="contactNumber"></h1>
+
+<div id="map" style="border: 1px; height: 400px; width: 400px;"></div>
+<script>
+    function initMap() {
+        // Initialize the map
+        var placeCoordinates = {lat: lib.latitude, lng: lib.longitude};
+
+        var map = new google.maps.Map(document.getElementById('map'), {
+            center: placeCoordinates, // Initial coordinates (New York City)
+            zoom: 12 // Initial zoom level
+        });
+
+        var marker = new google.maps.Marker({
+            position: placeCoordinates,
+            map: map,
+            title: 'London' // Marker title (optional)
+        });
+    }
+</script>
 <script>
     // Function to display JSON data as list items
     function displayJsonData() {
+        initMap();
         console.log(lib);
         document.getElementById("libraryName").innerText = lib.libraryName;
         document.getElementById("email").innerText = lib.email;
@@ -22,5 +43,8 @@
     // Call the function when the page loads
     window.onload = displayJsonData;
 </script>
+
+
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC65D4aIoayQlkDFJJzBtqKVpIQHSEM2_4&libraries=places"></script>
 </body>
 </html>

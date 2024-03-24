@@ -12,8 +12,8 @@ func (s *PostgresStorage) CreateTables() error {
     lastname VARCHAR(50),
     password VARCHAR(200),
     email VARCHAR(50),
-    address VARCHAR(200),
-    contactnumber VARCHAR(20));`
+    address VARCHAR(200) DEFAULT 'no address yet',
+    contactnumber VARCHAR(50) DEFAULT 'no contact number yet');`
 	_, err := s.DB.Exec(query)
 	if err != nil {
 		return err
@@ -24,8 +24,10 @@ func (s *PostgresStorage) CreateTables() error {
     name varchar(200),
     email varchar(50),
     password varchar(200),
-    address varchar(200),
-    contactnumber varchar(20)
+    address varchar(200) DEFAULT 'no address yet',
+    contactnumber varchar(50) DEFAULT 'no contact number yet',
+    latitude REAL,
+    longitude REAL
 )`
 	_, err = s.DB.Exec(query)
 	if err != nil {
@@ -64,8 +66,8 @@ func (s *PostgresStorage) CreateTables() error {
     lastname VARCHAR(50),
     password VARCHAR(200),
     email VARCHAR(50),
-    address VARCHAR(200),
-    contactnumber VARCHAR(20),
+    address VARCHAR(200) DEFAULT 'no address yet',
+    contactnumber VARCHAR(50) DEFAULT 'no contact number yet',
     tag VARCHAR(65),
     expires_at TIMESTAMP NOT NULL);`
 	_, err = s.DB.Exec(query)
@@ -78,14 +80,25 @@ func (s *PostgresStorage) CreateTables() error {
     name VARCHAR(50),
     password VARCHAR(200),
     email VARCHAR(50),
-    address VARCHAR(200),
-    contactnumber VARCHAR(20),
+    address VARCHAR(200) DEFAULT 'no address yet',
+    contactnumber VARCHAR(20) DEFAULT 'no contact number yet',
+    latitude REAL,
+    longitude REAL,
     tag VARCHAR(65),
     expires_at TIMESTAMP NOT NULL);`
 	_, err = s.DB.Exec(query)
 	if err != nil {
 		return err
 	}
+
+	query = `CREATE TABLE IF NOT EXISTS book_lib (
+    book_id SERIAL,
+    library_id SERIAL);`
+	_, err = s.DB.Exec(query)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

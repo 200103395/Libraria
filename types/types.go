@@ -20,10 +20,12 @@ type UserRequest struct {
 type LibRequest struct {
 	ID            uint      `json:"id"`
 	Email         string    `json:"email"`
-	Name          string    `json:"libraryName"`
+	Name          string    `json:"name"`
 	Password      string    `json:"password"`
 	Address       string    `json:"address"`
 	ContactNumber string    `json:"contactNumber"`
+	Latitude      float32   `json:"latitude"`
+	Longitude     float32   `json:"longitude"`
 	Tag           string    `json:"tag"`
 	ExpiresAt     time.Time `json:"expires_at"`
 }
@@ -39,20 +41,24 @@ type Account struct {
 }
 
 type LibraryAccount struct {
-	ID            uint   `json:"id"`
-	Email         string `json:"email"`
-	Name          string `json:"libraryName"`
-	Password      string `json:"password"`
-	Address       string `json:"address"`
-	ContactNumber string `json:"contactNumber"`
+	ID            uint    `json:"id"`
+	Email         string  `json:"email"`
+	Name          string  `json:"name"`
+	Password      string  `json:"password"`
+	Address       string  `json:"address"`
+	ContactNumber string  `json:"contactNumber"`
+	Latitude      float32 `json:"latitude"`
+	Longitude     float32 `json:"longitude"`
 }
 
 type LibraryWeb struct {
-	ID            uint   `json:"id"`
-	Email         string `json:"email"`
-	Name          string `json:"libraryName"`
-	Address       string `json:"address"`
-	ContactNumber string `json:"contactNumber"`
+	ID            uint    `json:"id"`
+	Email         string  `json:"email"`
+	Name          string  `json:"name"`
+	Address       string  `json:"address"`
+	ContactNumber string  `json:"contactNumber"`
+	Latitude      float32 `json:"latitude"`
+	Longitude     float32 `json:"longitude"`
 }
 
 type LoginRequest struct {
@@ -103,6 +109,8 @@ func (lib *LibraryAccount) ConvertToWeb() (webLibs *LibraryWeb) {
 		Name:          lib.Name,
 		Address:       lib.Address,
 		ContactNumber: lib.ContactNumber,
+		Latitude:      lib.Latitude,
+		Longitude:     lib.Longitude,
 	}
 }
 
@@ -118,12 +126,12 @@ func (account *UserRequest) Pointers() (*uint, *string, *string, *string, *strin
 	return &account.ID, &account.FirstName, &account.LastName, &account.Password, &account.Email, &account.Address, &account.ContactNumber, &account.Tag, &account.ExpiresAt
 }
 
-func (library *LibraryAccount) Pointers() (*uint, *string, *string, *string, *string, *string) {
-	return &library.ID, &library.Name, &library.Email, &library.Password, &library.Address, &library.ContactNumber
+func (library *LibraryAccount) Pointers() (*uint, *string, *string, *string, *string, *string, *float32, *float32) {
+	return &library.ID, &library.Name, &library.Email, &library.Password, &library.Address, &library.ContactNumber, &library.Latitude, &library.Longitude
 }
 
-func (library *LibRequest) Pointers() (*uint, *string, *string, *string, *string, *string, *string, *time.Time) {
-	return &library.ID, &library.Name, &library.Email, &library.Password, &library.Address, &library.ContactNumber, &library.Tag, &library.ExpiresAt
+func (library *LibRequest) Pointers() (*uint, *string, *string, *string, *string, *string, *float32, *float32, *string, *time.Time) {
+	return &library.ID, &library.Name, &library.Email, &library.Password, &library.Address, &library.ContactNumber, &library.Latitude, &library.Longitude, &library.Tag, &library.ExpiresAt
 }
 
 func (account *Account) ValidPassword(pw string) bool {

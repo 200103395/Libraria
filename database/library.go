@@ -25,8 +25,8 @@ func (s *PostgresStorage) GetLibraries() (*[]types.LibraryWeb, error) {
 }
 
 func (s *PostgresStorage) CreateLibraryAccount(library *types.LibraryAccount) error {
-	query := "Insert into library (name, email, password, address, contactnumber) values ($1, $2, $3, $4, $5, $6);"
-	_, err := s.DB.Exec(query, library.Name, library.Email, library.Password, library.Address, library.ContactNumber)
+	query := "Insert into library (name, email, password, address, contactnumber, latitude, logitude) values ($1, $2, $3, $4, $5, $6, $7, $8);"
+	_, err := s.DB.Exec(query, library.Name, library.Email, library.Password, library.Address, library.ContactNumber, library.Latitude, library.Longitude)
 	return err
 }
 

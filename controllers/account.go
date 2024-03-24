@@ -96,7 +96,7 @@ func (s *LibServer) AccountLoginHandler(w http.ResponseWriter, r *http.Request) 
 		Value:    token,
 		HttpOnly: true,
 		Path:     "/",
-		Expires:  time.Now().Add(time.Minute * 15),
+		Expires:  time.Now().Add(time.Minute * loginTimeMinutes),
 	}
 	http.SetCookie(w, &cookie)
 	return WriteJSON(w, http.StatusOK, cookie)

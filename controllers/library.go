@@ -68,6 +68,8 @@ func (s *LibServer) LibraryCreateHandler(w http.ResponseWriter, r *http.Request)
 		Email:         library.Email,
 		Address:       library.Address,
 		ContactNumber: library.ContactNumber,
+		Latitude:      library.Latitude,
+		Longitude:     library.Longitude,
 		Tag:           s.store.MakeToken("lib_requests"),
 		ExpiresAt:     expiresAt,
 	}
@@ -99,6 +101,8 @@ func (s *LibServer) LibraryConfirmHandler(w http.ResponseWriter, r *http.Request
 		Password:      lib.Password,
 		Address:       lib.Address,
 		ContactNumber: lib.ContactNumber,
+		Latitude:      lib.Latitude,
+		Longitude:     lib.Longitude,
 	}
 	err = library.PasswordHash()
 	if err != nil {
@@ -187,7 +191,7 @@ func (s *LibServer) LibraryLoginHandler(w http.ResponseWriter, r *http.Request) 
 		Value:    token,
 		HttpOnly: true,
 		Path:     "/",
-		Expires:  time.Now().Add(time.Minute * 15),
+		Expires:  time.Now().Add(time.Minute * loginTimeMinutes),
 	}
 	http.SetCookie(w, &cookie)
 	return WriteJSON(w, http.StatusOK, cookie)

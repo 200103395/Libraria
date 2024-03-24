@@ -4,6 +4,68 @@
     <meta charset="UTF-8">
     <title>Title</title>
     <script>
+        var books;
+      function populateData(data) {
+          var container = document.getElementById('containerDiv');
+          container.innerHTML = '';
+          data.forEach(jsonObject => {
+              const div = document.createElement('div');
+              Object.keys(jsonObject).forEach(key => {
+                  // Create a paragraph element for each key-value pair
+                  const paragraph = document.createElement('p');
+                  paragraph.textContent = `${key}: ${jsonObject[key]}`;
+                  div.appendChild(paragraph);
+              });
+
+              // Add some styling to each div
+              div.style.border = "1px solid #ccc";
+              div.style.padding = "10px";
+              div.style.marginBottom = "10px";
+
+              // Append the div to the container
+              container.appendChild(div);
+          });
+      }
+      function yearAdd() {
+          var yearSelection = document.getElementById('year');
+          var langSelection = document.getElementById('language');
+          var genreSelection = document.getElementById('genre');
+          var years = [];
+          var langs = [];
+          var genres = [];
+          books.forEach(jsonObject => {
+              if( !years.includes(jsonObject['year'])) {
+                  years.push(jsonObject['year']);
+              }
+              if( !langs.includes(jsonObject['language'])) {
+                  langs.push(jsonObject['language']);
+              }
+              if( !genres.includes(jsonObject['genre'])) {
+                  genres.push(jsonObject['genre']);
+              }
+          });
+          years.sort(function(a,b) {
+              return a - b;
+          });
+          years.forEach(function(year) {
+              var option = document.createElement('option');
+              option.value = year;
+              option.text = year;
+              yearSelection.appendChild(option);
+          });
+          langs.forEach(function(lang) {
+              var option = document.createElement('option');
+              option.value = lang;
+              option.text = lang;
+              langSelection.appendChild(option);
+          });
+          genres.forEach(function(genre) {
+              var option = document.createElement('option');
+              option.value = genre;
+              option.text = genre;
+              genreSelection.appendChild(option);
+          });
+      }
       function sendData() {
         var input = document.getElementById("inputField").value;
         var data = JSON.stringify({"inputValue": input});
@@ -16,38 +78,36 @@
             body: data
         }).then(response => response.json())
             .then(data => {
-                var container = document.getElementById('containerDiv');
-                container.innerHTML = '';
-                data.forEach(jsonObject => {
-                    const div = document.createElement('div');
-                    Object.keys(jsonObject).forEach(key => {
-                        // Create a paragraph element for each key-value pair
-                        const paragraph = document.createElement('p');
-                        paragraph.textContent = `${key}: ${jsonObject[key]}`;
-                        div.appendChild(paragraph);
-                    });
-
-                    // Add some styling to each div
-                    div.style.border = "1px solid #ccc";
-                    div.style.padding = "10px";
-                    div.style.marginBottom = "10px";
-
-                    // Append the div to the container
-                    container.appendChild(div);
-                });
+                books = data;
+                populateData(books);
+                addListener();
+                yearAdd();
         }).catch(error => {
             console.error(error);
         });
-        /*var xhr = new XMLHttpRequest();
-        xhr.open("POST", "/search", true);
-        xhr.setRequestHeader("Content-type", "application/json");
-        xhr.onreadystatechange = function () {
-          if(xhr.readyState === 4 && xhr.readyState === 200) {
-            console.log("response");
-            console.log(xhr.responseText);
-          }
-        }
-        xhr.send(data);*/
+      }
+      function filter() {
+          var year = document.getElementById('year').value;
+          var lang = document.getElementById('language').value;
+          var genre = document.getElementById('genre').value;
+          var valid = books.filter(function (book) {
+              if( year != '' && book.year != year) {
+                  return false;
+              }
+              if( lang != '' && book.language != lang) {
+                  return false;
+              }
+              if( genre != '' && book.genre != genre) {
+                  return false;
+              }
+              return true;
+          });
+          populateData(valid);
+      }
+      function addListener() {
+          document.getElementById('filter').addEventListener("change", function() {
+              filter();
+          });
       }
     </script>
 </head>
@@ -55,6 +115,17 @@
 <h3>Type name or author</h3>
 <input type="text" id="inputField">
 <button onclick="sendData()">Search</button><br><br>
+<form id="filter">
+    <select id="year">
+        <option value="">Select Year</option>
+    </select>
+    <select id="language">
+        <option value="">Select Language</option>
+    </select>
+    <select id="genre">
+        <option value="">Select Genre</option>
+    </select>
+</form><button onclick="filter()">Filter</button><br><br>
 <div id="containerDiv"></div>
 </body>
 </html>

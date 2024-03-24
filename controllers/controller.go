@@ -23,7 +23,8 @@ const (
 )
 
 var (
-	ErrorUnauthorized = errors.New("unauthorized")
+	ErrorUnauthorized               = errors.New("unauthorized")
+	loginTimeMinutes  time.Duration = 30
 )
 
 type LibServer struct {
@@ -68,8 +69,12 @@ func (s *LibServer) Run() {
 	r.HandleFunc("/library/{id}", MakeHTTPHandleFunc(s.GetLibraryHandler))
 	r.HandleFunc("/library", MakeHTTPHandleFunc(s.LibraryHandler))
 
+	r.HandleFunc("/unAuthorize", MakeHTTPHandleFunc(s.UnAuthorizeHandler))
+	r.HandleFunc("/getHeader", MakeHTTPHandleFunc(s.GetHeaderHandler))
+
 	r.HandleFunc("/book/{id}", MakeHTTPHandleFunc(s.BookHandler))
 	r.HandleFunc("/book/create", MakeHTTPHandleFunc(s.BookCreateHandler))
+	r.HandleFunc("/getAuth", MakeHTTPHandleFunc(s.GetAuthHandler))
 
 	if err := http.ListenAndServe(s.listenAddr, r); err != nil {
 		log.Fatal(err)
@@ -80,7 +85,6 @@ func (s *LibServer) HomeHandler(w http.ResponseWriter, r *http.Request) error {
 	if r.Method != "GET" {
 		return utils.MethodNotAllowed(w)
 	}
-	readJWT(r, s.store)
 	index, err := ioutil.ReadFile("static/index.html")
 	if err != nil {
 		return err
@@ -101,199 +105,40 @@ func (s *LibServer) AboutHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if _, err = fmt.Fprintf(w, string(html)); err != nil {
+		return err
+	}
+	err = WriteJSON(w, http.StatusOK, "Hello, World! This is us")
+	return err
+}
+
+func (s *LibServer) UnAuthorizeHandler(w http.ResponseWriter, r *http.Request) error {
+	deleteJWT(w)
+	_, err := fmt.Fprintf(w, "<script>window.location.href = '"+domain+"'; </script>")
+	return err
+}
+
+func (s *LibServer) GetHeaderHandler(w http.ResponseWriter, r *http.Request) error {
+	html, err := os.ReadFile("static/header.html")
+	if err != nil {
+		return err
+	}
 	_, err = fmt.Fprintf(w, string(html))
 	return err
 }
 
-func (s *LibServer) PasswordResetConfirmHandler(w http.ResponseWriter, r *http.Request) error {
-	if r.Method != "POST" && r.Method != "GET" {
-		return utils.MethodNotAllowed(w)
-	}
-	if r.Method == "GET" {
-		html, err := os.ReadFile("static/passwordConfirm.html")
-		if err != nil {
-			return err
-		}
-		token := utils.GetTAG(r)
-		_, err = fmt.Fprintf(w, fmt.Sprintf("<script> var token = \"%s\"; </script>", token))
-		_, err = fmt.Fprintf(w, string(html))
+func (s *LibServer) GetAuthHandler(w http.ResponseWriter, r *http.Request) error {
+	acc, err := readJWT(r, s.store)
+	lib, err2 := readLibJWT(r, s.store)
+	if err != nil && err2 != nil {
 		return err
 	}
-	token := utils.GetTAG(r)
-	req, err := s.store.GetPasswordReset(token)
-	fmt.Println(req, err, token)
-	if err != nil {
-		return WriteJSON(w, http.StatusBadRequest, "Incorrect link") //relocate
-	}
-	var newPw types.NewPassword
-	if err = json.NewDecoder(r.Body).Decode(&newPw); err != nil {
-		return WriteJSON(w, http.StatusBadRequest, "Incorrect link")
-	}
-	fmt.Println(newPw)
-	if newPw.NewPassword != newPw.NewPasswordConfirm {
-		return WriteJSON(w, http.StatusBadRequest, "Incorrect link")
-	}
-
-	user, err1 := s.store.GetAccountByEmail(req.Email)
-	library, err2 := s.store.GetLibraryByEmail(req.Email)
-	fmt.Println(err1, err2)
-	if err1 != nil && err2 != nil {
-		return WriteJSON(w, http.StatusBadRequest, "Incorrect link") //relocate
-	}
-	if err1 == nil {
-		user.Password = newPw.NewPassword
-		err = user.PasswordHash()
-		if err != nil {
-			return WriteJSON(w, http.StatusBadRequest, "Incorrect link") //relocate
-		}
-		s.store.UpdateAccount(user)
+	w.Header().Add("Content-Type", "application/json")
+	if err == nil {
+		return json.NewEncoder(w).Encode(acc)
 	} else {
-		library.Password = newPw.NewPassword
-		err = library.PasswordHash()
-		if err != nil {
-			return WriteJSON(w, http.StatusBadRequest, "Incorrect link") //relocate
-		}
-		s.store.UpdateLibrary(library)
+		return json.NewEncoder(w).Encode(lib)
 	}
-	return WriteJSON(w, http.StatusOK, "Password has been changed")
-}
-
-func (s *LibServer) PasswordResetHandler(w http.ResponseWriter, r *http.Request) error {
-	if r.Method != "POST" && r.Method != "GET" {
-		return utils.MethodNotAllowed(w)
-	}
-	if r.Method == "GET" {
-		html, err := os.ReadFile("static/passwordReset.html")
-		if err != nil {
-			return err
-		}
-		_, err = fmt.Fprintf(w, string(html))
-		return err
-	}
-
-	var jspost struct {
-		Email string `json:"email"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&jspost); err != nil {
-		return err
-	}
-	if err := s.store.CheckForRequest(jspost.Email); err != nil {
-		return err
-	}
-	user, err1 := s.store.GetAccountByEmail(jspost.Email)
-	library, err2 := s.store.GetLibraryByEmail(jspost.Email)
-	if err1 != nil && err2 != nil {
-		return WriteJSON(w, http.StatusBadRequest, "Incorrect email")
-	}
-
-	expiresAt := time.Now().Add(expiration * time.Minute).UTC()
-	request := &types.PasswordResetRequest{
-		Email:     jspost.Email,
-		Token:     s.store.MakeToken("password_reset"),
-		ExpiresAt: expiresAt,
-	}
-	appeal := ""
-	if err1 != nil {
-		appeal = library.Name + " Library"
-	}
-	if err2 != nil {
-		appeal = user.FirstName + " " + user.LastName
-	}
-	err := s.email.PasswordResetMessage(request.Email, appeal, domain+"/password_reset/"+request.Token)
-
-	if err != nil {
-		return WriteJSON(w, http.StatusBadRequest, "Error sending email, please try again later")
-	}
-	err = s.store.CreatePasswordReset(request)
-
-	if err != nil {
-		return WriteJSON(w, http.StatusBadRequest, "Error connecting to db, please try again later")
-	}
-	return WriteJSON(w, http.StatusOK, "Message has been sent to email: "+request.Email)
-	// show HTML success page
-}
-
-func (s *LibServer) BookHandler(w http.ResponseWriter, r *http.Request) error {
-	if r.Method == "DELETE" {
-		return s.BookDeleteHandler(w, r)
-	}
-	if r.Method == "UPDATE" {
-		return s.BookUpdateHandler(w, r)
-	}
-	if r.Method != "GET" {
-		return utils.MethodNotAllowed(w)
-	}
-	id, err := utils.GetID(r)
-	if err != nil {
-		return err
-	}
-	book, err := s.store.GetBookByID(id)
-	bookJson, err := json.Marshal(book)
-	if err != nil {
-		return err
-	}
-	html, err := os.ReadFile("static/bookGet.html")
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprintf(w, fmt.Sprintf("<script>var book = %s;</script>", bookJson))
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprintf(w, string(html))
-	return err
-}
-
-func (s *LibServer) BookDeleteHandler(w http.ResponseWriter, r *http.Request) error {
-	id, err := utils.GetID(r)
-	if err != nil {
-		return err
-	}
-	err = s.store.DeleteBookByID(id)
-	if err != nil {
-		return err
-	}
-	return WriteJSON(w, http.StatusOK, "Delete successful")
-}
-
-func (s *LibServer) BookUpdateHandler(w http.ResponseWriter, r *http.Request) error {
-	id, err := utils.GetID(r)
-	if err != nil {
-		return err
-	}
-	var book types.Book
-	err = json.NewDecoder(r.Body).Decode(&book)
-	if err != nil {
-		return err
-	}
-	book.ID = uint(id)
-	err = s.store.UpdateBook(book)
-	if err != nil {
-		return err
-	}
-	return WriteJSON(w, http.StatusOK, "Update successful")
-}
-
-func (s *LibServer) BookCreateHandler(w http.ResponseWriter, r *http.Request) error {
-	if r.Method == "GET" {
-		html, err := os.ReadFile("static/bookCreate.html")
-		if err != nil {
-			return err
-		}
-		_, err = fmt.Fprintf(w, string(html))
-		return err
-	}
-	if r.Method != "POST" {
-		return utils.MethodNotAllowed(w)
-	}
-	var book types.Book
-	if err := json.NewDecoder(r.Body).Decode(&book); err != nil {
-		return err
-	}
-	if err := s.store.CreateBook(&book); err != nil {
-		return err
-	}
-	return WriteJSON(w, http.StatusOK, "Book successfully created")
 }
 
 type LibFunc func(w http.ResponseWriter, r *http.Request) error
@@ -312,6 +157,10 @@ func withJWTAuth(handlerFunc http.HandlerFunc, s database.Storage) http.HandlerF
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("calling JWT auth middleware")
 		tokenString, err := r.Cookie("x-jwt-token")
+		if err != nil {
+			utils.PermissionDenied(w)
+			return
+		}
 		token, err := validateJWT(tokenString.Value)
 		if err != nil {
 			utils.PermissionDenied(w)
@@ -349,8 +198,12 @@ func withJWTAuth(handlerFunc http.HandlerFunc, s database.Storage) http.HandlerF
 
 func readJWT(r *http.Request, s database.Storage) (*types.Account, error) {
 	// Maybe rewriting in middleware format
-	tokenString := r.Header.Get("x-jwt-token")
-	token, err := validateJWT(tokenString)
+	tokenString, err := r.Cookie("x-jwt-token")
+	if err != nil {
+		return nil, ErrorUnauthorized
+	}
+	token, err := validateJWT(tokenString.Value)
+	fmt.Println(token, err)
 	if err != nil {
 		return nil, ErrorUnauthorized
 	}
@@ -363,11 +216,32 @@ func readJWT(r *http.Request, s database.Storage) (*types.Account, error) {
 	}
 	fmt.Println(claims["email"].(string))
 	account, err := s.GetAccountByEmail(claims["email"].(string))
+	fmt.Println(account, err)
 	if err != nil {
 		return nil, ErrorUnauthorized
 	}
 
 	return account, nil
+}
+
+func readLibJWT(r *http.Request, s database.Storage) (*types.LibraryAccount, error) {
+	tokenString, err := r.Cookie("x-jwt-token")
+	if err != nil {
+		return nil, ErrorUnauthorized
+	}
+	token, err := validateJWT(tokenString.Value)
+	if err != nil || !token.Valid {
+		return nil, ErrorUnauthorized
+	}
+	claims := token.Claims.(jwt.MapClaims)
+	if claims["email"] == nil {
+		return nil, ErrorUnauthorized
+	}
+	lib, err := s.GetLibraryByEmail(claims["email"].(string))
+	if err != nil {
+		return nil, ErrorUnauthorized
+	}
+	return lib, err
 }
 
 func validateJWT(tokenString string) (*jwt.Token, error) {
@@ -394,4 +268,13 @@ func createJWT(email string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	return token.SignedString([]byte(secret))
+}
+
+func deleteJWT(w http.ResponseWriter) {
+	cookie := http.Cookie{
+		Name:    "x-jwt-token",
+		Value:   "",
+		Expires: time.Now(),
+	}
+	http.SetCookie(w, &cookie)
 }
