@@ -24,7 +24,7 @@ const (
 
 var (
 	ErrorUnauthorized               = errors.New("unauthorized")
-	loginTimeMinutes  time.Duration = 30
+	loginTimeMinutes  time.Duration = 120
 )
 
 type LibServer struct {
@@ -55,6 +55,9 @@ func (s *LibServer) Run() {
 	r.HandleFunc("/about", MakeHTTPHandleFunc(s.AboutHandler))
 	r.HandleFunc("/search", MakeHTTPHandleFunc(s.SearchHandler)) // search & filter
 
+	r.HandleFunc("/login", MakeHTTPHandleFunc(s.LoginHandler))
+	r.HandleFunc("/register", MakeHTTPHandleFunc(s.RegisterHandler))
+	r.HandleFunc("/account/settings", MakeHTTPHandleFunc(s.AccountSettingsHandler))
 	r.HandleFunc("/account/confirm/{tag}", MakeHTTPHandleFunc(s.AccountConfirm))
 	r.HandleFunc("/account/register", MakeHTTPHandleFunc(s.AccountCreateHandler))
 	r.HandleFunc("/account/login", MakeHTTPHandleFunc(s.AccountLoginHandler))
@@ -63,6 +66,7 @@ func (s *LibServer) Run() {
 	r.HandleFunc("/password_reset/{tag}", MakeHTTPHandleFunc(s.PasswordResetConfirmHandler))
 	r.HandleFunc("/password_reset", MakeHTTPHandleFunc(s.PasswordResetHandler))
 
+	r.HandleFunc("/library/settings", MakeHTTPHandleFunc(s.LibrarySettingsHandler))
 	r.HandleFunc("/library/confirm/{tag}", MakeHTTPHandleFunc(s.LibraryConfirmHandler))
 	r.HandleFunc("/library/register", MakeHTTPHandleFunc(s.LibraryCreateHandler))
 	r.HandleFunc("/library/login", MakeHTTPHandleFunc(s.LibraryLoginHandler))
@@ -74,7 +78,12 @@ func (s *LibServer) Run() {
 
 	r.HandleFunc("/book/{id}", MakeHTTPHandleFunc(s.BookHandler))
 	r.HandleFunc("/book/create", MakeHTTPHandleFunc(s.BookCreateHandler))
+
 	r.HandleFunc("/getAuth", MakeHTTPHandleFunc(s.GetAuthHandler))
+	r.HandleFunc("/getLibraries", MakeHTTPHandleFunc(s.GetAllLibrariesHandler))
+	r.HandleFunc("/getSomeBooks", MakeHTTPHandleFunc(s.GetSomeBooksHandler))
+	r.HandleFunc("/getLibrariesByBook/{id}", MakeHTTPHandleFunc(s.GetLibrariesByBookIDHandler))
+	r.HandleFunc("/getLastBooks", MakeHTTPHandleFunc(s.GetLastBooks))
 
 	if err := http.ListenAndServe(s.listenAddr, r); err != nil {
 		log.Fatal(err)
@@ -112,6 +121,24 @@ func (s *LibServer) AboutHandler(w http.ResponseWriter, r *http.Request) error {
 	return err
 }
 
+func (s *LibServer) LoginHandler(w http.ResponseWriter, r *http.Request) error {
+	html, err := os.ReadFile("static/login.html")
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, string(html))
+	return err
+}
+
+func (s *LibServer) RegisterHandler(w http.ResponseWriter, r *http.Request) error {
+	html, err := os.ReadFile("static/register.html")
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, string(html))
+	return err
+}
+
 func (s *LibServer) UnAuthorizeHandler(w http.ResponseWriter, r *http.Request) error {
 	deleteJWT(w)
 	_, err := fmt.Fprintf(w, "<script>window.location.href = '"+domain+"'; </script>")
@@ -141,6 +168,34 @@ func (s *LibServer) GetAuthHandler(w http.ResponseWriter, r *http.Request) error
 	}
 }
 
+func (s *LibServer) GetLastBooks(w http.ResponseWriter, r *http.Request) error {
+	account, err := readJWT(r, s.store)
+	if err != nil {
+		return err
+	}
+	books, err := s.store.GetLastBooks(int(account.ID))
+	if err != nil {
+		return err
+	}
+	return WriteJSON(w, http.StatusOK, books)
+}
+
+func (s *LibServer) GetAllLibrariesHandler(w http.ResponseWriter, r *http.Request) error {
+	libraries, err := s.store.GetLibraries()
+	if err != nil {
+		return err
+	}
+	return WriteJSON(w, http.StatusOK, libraries)
+}
+
+func (s *LibServer) GetSomeBooksHandler(w http.ResponseWriter, r *http.Request) error {
+	books, err := s.store.GetSomeBooks()
+	if err != nil {
+		return err
+	}
+	return WriteJSON(w, http.StatusOK, books)
+}
+
 type LibFunc func(w http.ResponseWriter, r *http.Request) error
 
 type LibError struct {
@@ -150,6 +205,9 @@ type LibError struct {
 func WriteJSON(w http.ResponseWriter, status int, v any) error {
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(status)
+	if status != http.StatusOK {
+		fmt.Println("WriteJSON: ", v)
+	}
 	return json.NewEncoder(w).Encode(v)
 }
 
@@ -203,7 +261,6 @@ func readJWT(r *http.Request, s database.Storage) (*types.Account, error) {
 		return nil, ErrorUnauthorized
 	}
 	token, err := validateJWT(tokenString.Value)
-	fmt.Println(token, err)
 	if err != nil {
 		return nil, ErrorUnauthorized
 	}
@@ -214,9 +271,7 @@ func readJWT(r *http.Request, s database.Storage) (*types.Account, error) {
 	if claims["email"] == nil {
 		return nil, ErrorUnauthorized
 	}
-	fmt.Println(claims["email"].(string))
 	account, err := s.GetAccountByEmail(claims["email"].(string))
-	fmt.Println(account, err)
 	if err != nil {
 		return nil, ErrorUnauthorized
 	}

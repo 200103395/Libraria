@@ -2,9 +2,117 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>$Title$</title>
+  <title>Change Library Info</title>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC65D4aIoayQlkDFJJzBtqKVpIQHSEM2_4&libraries=places"></script>
+  <style>
+    #map {
+      height: 400px;
+      width: 100%;
+    }
+  </style>
+  <script>var latitude;
+  var longitude;
+  </script>
 </head>
 <body>
-$END$
+<h1>Change Library Info</h1>
+<form method="post" id="myForm">
+  <label for="name">Library Name: </label>
+  <input id="name" name="name" type="text" required><br>
+  <label for="address">Address: </label>
+  <input id="address" name="address" type="text"><br>
+  <label for="contactNumber">Contact Number: </label>
+  <input id="contactNumber" name="contactNumber" type="text"><br>
+  <input id="latitude" required value="select place" name="latitude" readonly>
+  <input id="longitude" required name="longitude" readonly>
+  <input type="submit" value="Change Information">
+</form>
+<button onclick="resetPosition()">Reset position</button><br>
+<div id="map"></div>
+<script>
+
+  var map;
+  var marker;
+  function initMap() {
+    // Initialize the map
+    map = new google.maps.Map(document.getElementById('map'), {
+      center: { lat: 43.24, lng: 76.88 }, // Initial coordinates (New York City)
+      zoom: 12 // Initial zoom level
+    });
+    marker = new google.maps.Marker({
+      map: map,
+      title: 'Library'
+    });
+
+    // Add click event listener to the map
+    map.addListener('click', function(event) {
+      // Get latitude and longitude of the clicked location
+      var latitude = event.latLng.lat();
+      var longitude = event.latLng.lng();
+
+      marker.setPosition(event.latLng);
+
+      // Update hidden form fields with latitude and longitude values
+      document.getElementById('latitude').value = latitude;
+      document.getElementById('longitude').value = longitude;
+    });
+  }
+  initMap();
+
+  document.getElementById("myForm").addEventListener("submit", function(event){
+    event.preventDefault();
+    var formData = new FormData(this);
+
+    var jsonData = {};
+    formData.forEach(function (value, key){
+      jsonData[key] = value;
+    });
+    jsonData['latitude'] = parseFloat(jsonData['latitude']);
+    jsonData['longitude'] = parseFloat(jsonData['longitude']);
+    console.log(jsonData, JSON.stringify(jsonData));
+
+    fetch("/library/settings",{
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(jsonData)
+    }).then(response => {
+      if(response.ok) {
+        console.log(response.json());
+        alert("settings changed successful");
+      } else {
+        alert("Error while settings");
+        console.log(response);
+      }
+    }).catch(error => console.error(error));
+  });
+  function populateForm(data) {
+    console.log(data);
+    if( data.hasOwnProperty('error') || !data.hasOwnProperty('name')) {
+      window.location.href = '';
+      return;
+    }
+    document.getElementById('name').value = data['name'];
+    document.getElementById('address').value = data['address'];
+    document.getElementById('contactNumber').value = data['contactNumber'];
+    document.getElementById('latitude').value = data['latitude'];
+    document.getElementById('longitude').value = data['longitude'];
+    latitude = data['latitude'];
+    longitude = data['longitude'];
+    marker.setPosition({'lat': latitude, 'lng': longitude});
+  }
+  function resetPosition() {
+    marker.setPosition({'lat': latitude, 'lng': longitude});
+    document.getElementById('latitude').value = latitude;
+    document.getElementById('longitude').value = longitude;
+  }
+  window.onload = function() {
+    fetch("/getAuth")
+            .then(response => response.json())
+            .then(data => populateForm(data))
+            .catch(error => console.error(error));
+  }
+</script>
 </body>
 </html>

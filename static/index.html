@@ -2,19 +2,61 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Title</title>
     <style>
         body {
             margin: 0;
             padding: 0;
+            background-color: antiquewhite;
+            height: 100%;
+        }
+        .mainBlock {
+            width: 100vw;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        #libraries {
+            display: flex;
+            overflow-x: auto;
+            height: 30%;
+        }
+        .library {
+            overflow-y: auto;
+            border: 1px solid white;
+            background: white;
+            margin: 5px;
+            border-radius: 5px;
+            padding: 5px;
+        }
+        #books {
+            display: flex;
+            width: 100%;
+            overflow-y: auto;
+        }
+        .book {
+            width: 20vw;
+            border: 1px solid white;
+            background: white;
+            margin: 5px;
+            border-radius: 5px;
+            padding: 5px;
+        }
+        p {
+            overflow-x: auto;
         }
     </style>
 </head>
 <body>
+<div class="mainBlock">
 <include src="header.html"></include>
 <h1>Main page</h1>
 <br>
 <div id="account"></div>
+<div id="books"></div>
+    <br>
+<div id="libraries"></div>
+</div>
 <script>
     window.onload = function () {
         fetch('/getHeader').then(response => response.text())
@@ -24,33 +66,101 @@
             }).catch(error => {
             console.error(error);
         });
+        fetchBooks();
+        fetchLibraries();
     }
 </script>
 
 <script>
+    function confirmLogout() {
+        let result = confirm("Are you sure you want to logout?");
+        if(result) {
+            window.location.href = '/unAuthorize';
+        }
+    }
+    function fetchLibraries() {
+        fetch('/getLibraries')
+            .then(response => response.json())
+            .then(data => showLibraries(data))
+            .catch(error => console.error(error));
+    }
+    function fetchBooks() {
+        fetch('/getSomeBooks')
+            .then(response => response.json())
+            .then(data => showBooks(data))
+            .catch(error => console.error(error));
+    }
+    function showBooks(data) {
+        if(data === null) {
+            return;
+        }
+        let container = document.getElementById('books');
+        data.forEach(jsonObject => {
+            const div = document.createElement('div');
+            const a = document.createElement('a');
+            a.href = '/book/' + jsonObject['id'];
+            a.style.textDecoration = 'none';
+            a.style.color = 'inherit';
+            div.className = 'book';
+            Object.keys(jsonObject).forEach(key => {
+                // Create a paragraph element for each key-value pair
+                const paragraph = document.createElement('p');
+                paragraph.textContent = `${key}: ${jsonObject[key]}`;
+                div.appendChild(paragraph);
+            });
+
+            a.appendChild(div);
+            container.appendChild(a);
+        });
+    }
+    function showLibraries(data) {
+        let mainDiv = document.getElementById('libraries');
+        data.forEach(function(line) {
+            let block = document.createElement('div');
+            block.className = 'library';
+            const a = document.createElement('a');
+            a.href = '/library/' + line['id'];
+            a.style.textDecoration = 'none';
+            a.style.color = 'inherit';
+
+            let ul = document.createElement('ul');
+            let name = document.createElement('li');
+            let email = document.createElement('li');
+            let address = document.createElement('li');
+            let number = document.createElement('li');
+            name.innerText = line['name'];
+            email.innerText = line['email'];
+            address.innerText = line['address'];
+            number.innerText = line['contactNumber'];
+            ul.append(name,email,address,number);
+            block.appendChild(ul);
+            a.appendChild(block);
+            mainDiv.appendChild(a);
+        });
+    }
     function fetchAccount() {
-        var account;
+        let account;
         fetch('/getAuth').then(response => response.json())
             .then(data => {
-                var obj = document.getElementById('header');
+                let obj = document.getElementById('header');
                 account = data;
                 if( data.hasOwnProperty('error')) {
                     console.log("Has error");
-                    var loginAcc = document.createElement("span");
-                    var linkAcc = document.createElement("a");
-                    linkAcc.href = "/account/login";
-                    linkAcc.innerText = "Login as User";
-                    loginAcc.appendChild(linkAcc);
-                    loginAcc.style.marginLeft = '10px';
-                    obj.appendChild(loginAcc);
+                    let login = document.createElement("span");
+                    let linkAcc = document.createElement("a");
+                    linkAcc.href = "/login";
+                    linkAcc.innerText = "Login";
+                    login.appendChild(linkAcc);
+                    login.style.marginLeft = '10px';
+                    obj.appendChild(login);
 
-                    var loginLib = document.createElement("span");
+                    var register = document.createElement("span");
                     var linkLib = document.createElement("a");
-                    linkLib.href = "/library/login";
-                    linkLib.innerText = "Login as Library";
-                    loginLib.appendChild(linkLib);
-                    loginLib.style.marginLeft = '10px';
-                    obj.appendChild(loginLib);
+                    linkLib.href = "/register";
+                    linkLib.innerText = "Register";
+                    register.appendChild(linkLib);
+                    register.style.marginLeft = '10px';
+                    obj.appendChild(register);
                 } else {
                     console.log("Doesn't have error", JSON.stringify(data));
                     var name = document.createElement("span");
@@ -67,8 +177,8 @@
                     obj.appendChild(name);
                     var signout = document.createElement("span");
                     signout.style.marginLeft = '15px';
-                    var outlink = document.createElement('a');
-                    outlink.href = '/unAuthorize';
+                    var outlink = document.createElement('button');
+                    outlink.addEventListener("click", confirmLogout);
                     outlink.innerText = 'Sign Out';
                     signout.appendChild(outlink);
                     obj.appendChild(signout);

@@ -2,9 +2,107 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title id="title">Title</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC65D4aIoayQlkDFJJzBtqKVpIQHSEM2_4&libraries=places"></script>
+    <style>
+        .library {
+            border: black 1px solid;
+            margin-bottom: 10px;
+            padding: 10px;
+        }
+        #map {
+            height: 400px;
+            width: 100%;
+        }
+    </style>
 </head>
 <body>
+    <div id="containerDiv">
 
+    </div>
+    <div id="map">
+
+    </div>
+    <div id="libraries">
+
+    </div>
+    <script>
+        let map;
+        let markers = [];
+        function mapInit() {
+            // TODO: Map initialize
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 43.24, lng: 76.88 }, // Initial coordinates (New York City)
+                zoom: 12 // Initial zoom level
+            });
+            marker = new google.maps.Marker({
+                map: map,
+                title: 'Library'
+            });
+            marker.setPosition(event.latLng);
+        }
+        function addMarker(lib) {
+            let marker = new google.maps.Marker({
+                map: map,
+                title: lib['name'],
+                position: {'lat': lib['latitude'], 'lng': lib['longitude']}
+            });
+            markers += marker;
+        }
+        let container = document.getElementById('containerDiv');
+        container.innerHTML = '';
+        const a = document.createElement('a');
+        a.href = '/book/' + book['id'];
+        a.style.textDecoration = 'none';
+        a.style.color = 'inherit';
+        const div = document.createElement('div');
+        console.log(book);
+        Object.keys(book).forEach(key => {
+            // Create a paragraph element for each key-value pair
+            const paragraph = document.createElement('p');
+            paragraph.textContent = `${key}: ${book[key]}`;
+            div.appendChild(paragraph);
+        });
+
+        // Add some styling to each div
+        div.style.border = "1px solid #ccc";
+        div.style.padding = "10px";
+        div.style.marginBottom = "10px";
+
+        // Append the div to the container
+        a.appendChild(div);
+        container.appendChild(a);
+
+        document.getElementById('title').innerText = book['name'];
+        window.onload = function() {
+            fetchLibs();
+            mapInit();
+        }
+        function fetchLibs() {
+            fetch('/getLibrariesByBook/' + book['id'])
+                .then(response => response.json())
+                .then(data => showLibraries(data))
+                .catch(error => console.error(error));
+        }
+        function showLibraries(data) {
+            let div = document.getElementById('libraries');
+            data.forEach(function(row) {
+                addMarker(row);
+                let lib = document.createElement('div');
+                lib.className = 'library';
+                let link = document.createElement('a');
+                link.style.textDecoration = 'None';
+                link.style.color = 'inherit';
+                link.href = '/library/' + row['id'];
+                Object.keys(row).forEach(key => {
+                    const par = document.createElement('p');
+                    par.textContent = `${key}: ${row[key]}`;
+                    lib.appendChild(par);
+                });
+                link.appendChild(lib);
+                div.appendChild(link);
+            });
+        }
+    </script>
 </body>
 </html>

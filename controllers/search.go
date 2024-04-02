@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"Libraria/types"
 	"Libraria/utils"
 	"encoding/json"
 	"fmt"
@@ -27,11 +28,18 @@ func (s *LibServer) SearchHandler(w http.ResponseWriter, r *http.Request) error 
 		fmt.Println(err)
 		return err
 	}
-	books, err := s.store.SearchBookName(inJson.Input)
+	books, libs, err := s.store.SearchBookName(inJson.Input)
 	if err != nil {
 		return err
 	}
-	jsonBooks, err := json.Marshal(books)
+	ret := struct {
+		Books     []types.Book       `json:"books"`
+		Libraries []types.LibraryWeb `json:"libraries"`
+	}{
+		Books:     *books,
+		Libraries: *libs,
+	}
+	jsonBooks, err := json.Marshal(ret)
 	if err != nil {
 		return err
 	}

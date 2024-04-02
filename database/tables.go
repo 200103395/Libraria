@@ -11,9 +11,7 @@ func (s *PostgresStorage) CreateTables() error {
     firstname VARCHAR(50),
     lastname VARCHAR(50),
     password VARCHAR(200),
-    email VARCHAR(50),
-    address VARCHAR(200) DEFAULT 'no address yet',
-    contactnumber VARCHAR(50) DEFAULT 'no contact number yet');`
+    email VARCHAR(50));`
 	_, err := s.DB.Exec(query)
 	if err != nil {
 		return err
@@ -66,8 +64,6 @@ func (s *PostgresStorage) CreateTables() error {
     lastname VARCHAR(50),
     password VARCHAR(200),
     email VARCHAR(50),
-    address VARCHAR(200) DEFAULT 'no address yet',
-    contactnumber VARCHAR(50) DEFAULT 'no contact number yet',
     tag VARCHAR(65),
     expires_at TIMESTAMP NOT NULL);`
 	_, err = s.DB.Exec(query)
@@ -99,6 +95,15 @@ func (s *PostgresStorage) CreateTables() error {
 		return err
 	}
 
+	query = `CREATE TABLE IF NOT EXISTS last_books(
+    user_id SERIAL NOT NULL,
+    book_id SERIAL NOT NULL,
+    time TIMESTAMP NOT NULL
+	)`
+	if _, err = s.DB.Exec(query); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -115,64 +120,88 @@ func (s *PostgresStorage) ClearRequests() {
 		if err != nil {
 			fmt.Println("Error while clearing requests:", err)
 			continue
-		}
-		for rows.Next() {
-			var id int
-			err = rows.Scan(&id)
-			if err != nil {
-				fmt.Println("Error while iterating requests", err)
-				continue
+		} else {
+			for rows.Next() {
+				var id int
+				err = rows.Scan(&id)
+				if err != nil {
+					fmt.Println("Error while iterating requests", err)
+					continue
+				}
+				_, err = s.DB.Exec(`delete from user_requests where id = $1`, id)
+				if err != nil {
+					fmt.Println("Error while deleting requests", err)
+					continue
+				}
+				fmt.Println("Request with id ", id, " was deleted")
 			}
-			_, err = s.DB.Exec(`delete from user_requests where id = $1`, id)
-			if err != nil {
-				fmt.Println("Error while deleting requests", err)
-				continue
-			}
-			fmt.Println("Request with id ", id, " was deleted")
+			rows.Close()
 		}
-		rows.Close()
 
 		rows, err = s.DB.Query(`select id from lib_requests where expires_at < NOW() at time zone 'UTC';`)
 		if err != nil {
 			fmt.Println("Error while clearing requests:", err)
 			continue
-		}
-		for rows.Next() {
-			var id int
-			err = rows.Scan(&id)
-			if err != nil {
-				fmt.Println("Error while iterating requests", err)
-				continue
+		} else {
+			for rows.Next() {
+				var id int
+				err = rows.Scan(&id)
+				if err != nil {
+					fmt.Println("Error while iterating requests", err)
+					continue
+				}
+				_, err = s.DB.Exec(`delete from lib_requests where id = $1`, id)
+				if err != nil {
+					fmt.Println("Error while deleting requests", err)
+					continue
+				}
+				fmt.Println("Request with id ", id, " was deleted")
 			}
-			_, err = s.DB.Exec(`delete from lib_requests where id = $1`, id)
-			if err != nil {
-				fmt.Println("Error while deleting requests", err)
-				continue
-			}
-			fmt.Println("Request with id ", id, " was deleted")
+			rows.Close()
 		}
-		rows.Close()
 
 		rows, err = s.DB.Query(`select id from password_reset where expires_at < NOW() at time zone 'UTC';`)
 		if err != nil {
 			fmt.Println("Error while clearing requests:", err)
 			continue
-		}
-		for rows.Next() {
-			var id int
-			err = rows.Scan(&id)
-			if err != nil {
-				fmt.Println("Error while iterating requests", err)
-				continue
+		} else {
+			for rows.Next() {
+				var id int
+				err = rows.Scan(&id)
+				if err != nil {
+					fmt.Println("Error while iterating requests", err)
+					continue
+				}
+				_, err = s.DB.Exec(`delete from password_reset where id = $1`, id)
+				if err != nil {
+					fmt.Println("Error while deleting requests", err)
+					continue
+				}
+				fmt.Println("Request with id ", id, " was deleted")
 			}
-			_, err = s.DB.Exec(`delete from password_reset where id = $1`, id)
-			if err != nil {
-				fmt.Println("Error while deleting requests", err)
-				continue
-			}
-			fmt.Println("Request with id ", id, " was deleted")
+			rows.Close()
 		}
-		rows.Close()
+
+		rows, err = s.DB.Query(`select user_id, book_id from
+		(SELECT user_id, book_id, time, row_number() over(PARTITION BY user_id ORDER BY time desc) AS row_num
+		FROM last_books) as subquery
+		where row_num > 5;`)
+		if err != nil {
+			continue
+		} else {
+			for rows.Next() {
+				var user_id, book_id int
+				err = rows.Scan(&user_id, &book_id)
+				if err != nil {
+					continue
+				}
+				_, err = s.DB.Exec(`delete from last_books where user_id = $1 and book_id = $2`, user_id, book_id)
+				if err != nil {
+					continue
+				}
+			}
+			rows.Close()
+		}
 
 		time.Sleep(1 * time.Minute)
 	}

@@ -33,6 +33,43 @@ func (s *LibServer) LibraryHandler(w http.ResponseWriter, r *http.Request) error
 	return err
 }
 
+func (s *LibServer) LibrarySettingsHandler(w http.ResponseWriter, r *http.Request) error {
+	if r.Method == "GET" {
+		if _, err := readLibJWT(r, s.store); err != nil {
+			return err
+		}
+		html, err := os.ReadFile("static/librarySettings.html")
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(w, string(html))
+		return err
+	}
+	if r.Method != "POST" {
+		fmt.Println(r.URL, r.Method)
+		return utils.MethodNotAllowed(w)
+	}
+	lib, err := readLibJWT(r, s.store)
+	fmt.Println("READING LIB", lib, err)
+	if err != nil {
+		return err
+	}
+	var newLib types.LibraryAccount
+	if err := json.NewDecoder(r.Body).Decode(&newLib); err != nil {
+		fmt.Println("Decoder error", err, newLib)
+		return err
+	}
+	if err := newLib.ValidateAccount(); err != nil {
+		return err
+	}
+	newLib.ID = lib.ID
+	fmt.Println("LIB", newLib)
+	if err := s.store.UpdateLibrary(&newLib); err != nil {
+		return err
+	}
+	return WriteJSON(w, http.StatusOK, newLib)
+}
+
 func (s *LibServer) LibraryCreateHandler(w http.ResponseWriter, r *http.Request) error {
 	if r.Method != "POST" && r.Method != "GET" {
 		return utils.MethodNotAllowed(w)

@@ -10,6 +10,7 @@
 <h1 id="email"></h1>
 <h1 id="address"></h1>
 <h1 id="contactNumber"></h1>
+<div id="settings"></div>
 
 <div id="map" style="border: 1px; height: 400px; width: 400px;"></div>
 <script>
@@ -33,11 +34,35 @@
     // Function to display JSON data as list items
     function displayJsonData() {
         initMap();
+        showSettings();
         console.log(lib);
         document.getElementById("libraryName").innerText = lib.libraryName;
         document.getElementById("email").innerText = lib.email;
         document.getElementById("address").innerText = lib.address;
         document.getElementById("contactNumber").innerText = lib.contactNumber;
+    }
+    function showSettings() {
+        fetch('/getAuth')
+            .then(response => response.json())
+            .then(data => decide(data))
+            .catch(error => console.error(error));
+    }
+    function decide(data) {
+        console.log(data);
+        if( data.hasOwnProperty('error') || data.hasOwnProperty('firstName')) {
+            return;
+        }
+        let splts = window.location.href.split('/');
+        let id = splts[splts.length - 1];
+        if( id == data['id']) {
+            console.log('creating stuff');
+            let a = document.createElement('a');
+            a.href = '/library/settings';
+            let button = document.createElement('h2');
+            button.innerText = 'Change Library Information';
+            a.appendChild(button);
+            document.getElementById('settings').appendChild(a);
+        }
     }
 
     // Call the function when the page loads

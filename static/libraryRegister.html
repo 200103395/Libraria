@@ -29,7 +29,7 @@
     <input id="longitude" required name="longitude" readonly>
     <input type="submit" value="Register">
 </form><br>
-<div id="map"></div>
+<div id="map">If map doesn't show up, reload page</div>
 <script>
     var map;
     var marker;
@@ -58,7 +58,6 @@
             document.getElementById('longitude').value = longitude;
         });
     }
-    initMap();
     document.getElementById("myForm").addEventListener("submit", function(event){
         event.preventDefault();
         var formData = new FormData(this);
@@ -86,6 +85,9 @@
             console.error(error);
         });
     });
+    window.onload = function() {
+        initMap();
+    }
 </script>
 
 <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC65D4aIoayQlkDFJJzBtqKVpIQHSEM2_4&libraries=places"></script>

@@ -1,10 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <title>Change Account Info</title>
 </head>
 <body>
-$END$
+<h1>Change Account Info</h1>
+<form method="post" id="myForm">
+    <label for="firstName">First Name: </label>
+    <input id="firstName" name="firstName" type="text" required maxlength="15"><br>
+    <label for="lastName">Last Name: </label>
+    <input id="lastName" name="lastName" type="text" required maxlength="15"><br>
+    <input type="submit" value="Change Information">
+</form>
+<script>
+    document.getElementById("myForm").addEventListener("submit", function(event){
+        event.preventDefault();
+        var formData = new FormData(this);
+
+        var jsonData = {};
+        formData.forEach(function (value, key){
+            jsonData[key] = value;
+        });
+
+        fetch("/account/settings",{
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(jsonData)
+        }).then(response => {
+            if(response.ok) {
+                console.log(response.json());
+                alert("settings changed successful");
+            } else {
+                alert("Error while settings");
+                console.log(response);
+            }
+        }).catch(error => console.error(error));
+    });
+    function populateForm(data) {
+        console.log(data);
+        document.getElementById('firstName').value = data['firstName'];
+        document.getElementById('lastName').value = data['lastName'];
+    }
+    window.onload = function() {
+        fetch("/getAuth")
+            .then(response => response.json())
+            .then(data => populateForm(data))
+            .catch(error => console.error(error));
+    }
+</script>
 </body>
 </html>

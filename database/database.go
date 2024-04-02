@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"strings"
+	"time"
 )
 
 var dbuser string
@@ -37,13 +38,17 @@ type Storage interface {
 	ClearRequests()
 	CreateBook(book *types.Book) error
 	GetBooks() (*[]types.Book, error)
+	GetSomeBooks() (*[]types.Book, error)
 	GetBookByID(id int) (*types.Book, error)
 	UpdateBook(book types.Book) error
 	DeleteBookByID(id int) error
-	SearchBookName(name string) (*[]types.Book, error)
+	SearchBookName(name string) (*[]types.Book, *[]types.LibraryWeb, error)
 	CreatePasswordReset(request *types.PasswordResetRequest) error
 	GetPasswordReset(token string) (*types.PasswordResetRequest, error)
 	DeletePasswordReset(request *types.PasswordResetRequest) error
+	GetLibrariesByBookID(id int) (*[]types.LibraryAccount, error)
+	AddBookVisit(user_id, book_id int)
+	GetLastBooks(id int) (*[]types.Book, error)
 }
 
 type PostgresStorage struct {
@@ -126,56 +131,22 @@ func (s *PostgresStorage) CheckForRequest(email string) error {
 	return nil
 }
 
-func (s *PostgresStorage) CreateUserRequest(request *types.UserRequest) error {
-	query := "Insert into user_requests (firstname, lastname, email, password, address, contactnumber, tag, expires_at) values ($1, $2, $3, $4, $5, $6, $7, $8);"
-	_, err := s.DB.Exec(query, request.FirstName, request.LastName, request.Email, request.Password, request.Address, request.ContactNumber, request.Tag, request.ExpiresAt)
-	return err
-}
-
-func (s *PostgresStorage) GetUserRequestByTAG(tag string) (*types.UserRequest, error) {
-	query := "select * from user_requests where tag = $1;"
-	res, err := s.DB.Query(query, tag)
-	if err != nil {
-		return nil, err
+func (s *PostgresStorage) AddBookVisit(user_id, book_id int) {
+	query := `select count(*) from last_books where user_id = $1 and book_id = $2`
+	var count int
+	if err := s.DB.QueryRow(query, user_id, book_id).Scan(&count); err != nil {
+		return
 	}
-	var req types.UserRequest
-	res.Next()
-	err = res.Scan(req.Pointers())
-	fmt.Printf("%+v\n", req)
-	return &req, err
-}
-
-func (s *PostgresStorage) DeleteUserRequest(request *types.UserRequest) error {
-	query := "delete from user_requests where id = $1;"
-	_, err := s.DB.Exec(query, request.ID)
-	fmt.Println(err)
-	return err
-}
-
-func (s *PostgresStorage) CreateLibRequest(request *types.LibRequest) error {
-	query := "Insert into lib_requests (name, email, password, address, contactnumber, tag, expires_at) values ($1, $2, $3, $4, $5, $6, $7);"
-	_, err := s.DB.Exec(query, request.Name, request.Email, request.Password, request.Address, request.ContactNumber, request.Tag, request.ExpiresAt)
-	return err
-}
-
-func (s *PostgresStorage) GetLibRequestByTAG(tag string) (*types.LibRequest, error) {
-	query := "select * from lib_requests where tag = $1;"
-	res, err := s.DB.Query(query, tag)
-	if err != nil {
-		return nil, err
+	timeNow := time.Now().UTC()
+	if count == 0 {
+		query = `insert into last_books(user_id, book_id, time) values ($1, $2, $3)`
+		s.DB.Exec(query, user_id, book_id, timeNow)
+		return
+	} else {
+		query = `update last_books set time = $3 where user_id = $1 and book_id = $2`
+		s.DB.Exec(query, user_id, book_id, timeNow)
+		return
 	}
-	var req types.LibRequest
-	res.Next()
-	err = res.Scan(req.Pointers())
-	fmt.Printf("%+v\n", req)
-	return &req, err
-}
-
-func (s *PostgresStorage) DeleteLibRequest(request *types.LibRequest) error {
-	query := "delete from lib_requests where id = $1;"
-	_, err := s.DB.Exec(query, request.ID)
-	fmt.Println(err)
-	return err
 }
 
 func (s *PostgresStorage) CreateBook(book *types.Book) error {
@@ -193,7 +164,25 @@ func (s *PostgresStorage) GetBooks() (*[]types.Book, error) {
 	}
 	for rows.Next() {
 		var book types.Book
-		err = rows.Scan(&book)
+		err = rows.Scan(book.Pointers())
+		if err != nil {
+			continue
+		}
+		books = append(books, book)
+	}
+	return &books, nil
+}
+
+func (s *PostgresStorage) GetSomeBooks() (*[]types.Book, error) {
+	var books []types.Book
+	query := `select * from book limit 15;`
+	rows, err := s.DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var book types.Book
+		err = rows.Scan(book.Pointers())
 		if err != nil {
 			continue
 		}
@@ -210,17 +199,17 @@ func (s *PostgresStorage) GetBookByID(id int) (*types.Book, error) {
 		return &book, err
 	}
 	row.Next()
-	err = row.Scan(&book)
+	err = row.Scan(book.Pointers())
 	return &book, err
 }
 
-func (s *PostgresStorage) SearchBookName(name string) (*[]types.Book, error) {
+func (s *PostgresStorage) SearchBookName(name string) (*[]types.Book, *[]types.LibraryWeb, error) {
 	var books []types.Book
-	query := `select * from book where lower(name) like $1 or lower(author) like $1;`
+	query := `select * from book where lower(name) like $1 or lower(author) like $1 or lower(genre) like $1;`
 	name = "%" + strings.ToLower(name) + "%"
 	rows, err := s.DB.Query(query, name)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for rows.Next() {
 		var book types.Book
@@ -231,9 +220,74 @@ func (s *PostgresStorage) SearchBookName(name string) (*[]types.Book, error) {
 		books = append(books, book)
 	}
 	if len(books) == 0 {
-		return nil, fmt.Errorf("no books found")
+		return nil, nil, fmt.Errorf("no books found")
+	}
+	query = `select id, email, name, address, contactnumber, latitude, longitude from library join
+	(select distinct(library_id) from book_lib join (
+    	select id from book where lower(name) like $1 or lower(author) like $1 or lower(genre) like $1
+	) as sub on book_id = sub.id) as bigQuery on id = library_id;`
+	var libs []types.LibraryWeb
+	if rows, err = s.DB.Query(query, name); err != nil {
+		return &books, nil, nil
+	}
+	for rows.Next() {
+		var lib types.LibraryWeb
+		if err = rows.Scan(&lib.ID, &lib.Email, &lib.Name, &lib.Address, &lib.ContactNumber, &lib.Latitude, &lib.Longitude); err != nil {
+			fmt.Println(err)
+			continue
+		}
+		libs = append(libs, lib)
+	}
+	return &books, &libs, nil
+}
+
+func (s *PostgresStorage) GetLastBooks(id int) (*[]types.Book, error) {
+	var books []types.Book
+	query := `select * from book join (
+    	select distinct(book_id), time from last_books where user_id = $1
+    	order by time desc limit 5 
+	) as subquery on id = book_id`
+	row, err := s.DB.Query(query, id)
+	if err != nil {
+		return nil, err
+	}
+	for row.Next() {
+		var book types.Book
+		var temp int
+		var tim time.Time
+		if err = row.Scan(&book.ID, &book.Name, &book.Author, &book.Year, &book.Genre, &book.Description, &book.Language, &book.PageNumber, &temp, &tim); err != nil {
+			return nil, err
+		}
+		books = append(books, book)
+	}
+	if len(books) == 0 {
+		return nil, fmt.Errorf("No books found")
 	}
 	return &books, nil
+}
+
+func (s *PostgresStorage) GetLibrariesByBookID(id int) (*[]types.LibraryAccount, error) {
+	var libs []types.LibraryAccount
+	query := `select id, name, email, password, address, contactnumber, latitude, longitude
+	from library join (
+		select distinct(library_id) from book_lib 
+		where book_id = $1
+	) as subquery on id = library_id;`
+	rows, err := s.DB.Query(query, id)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var lib types.LibraryAccount
+		if err = rows.Scan(lib.Pointers()); err != nil {
+			continue
+		}
+		libs = append(libs, lib)
+	}
+	if len(libs) == 0 {
+		return nil, fmt.Errorf("no libraries found")
+	}
+	return &libs, nil
 }
 
 func (s *PostgresStorage) DeleteBookByID(id int) error {

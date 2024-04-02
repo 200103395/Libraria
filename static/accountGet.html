@@ -3,30 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <style>
+        #books {
+            display: flex;
+            width: 100%;
+            overflow-y: auto;
+        }
+        .book {
+            width: 20vw;
+            border: 1px solid black;
+            background: white;
+            margin: 5px;
+            border-radius: 5px;
+            padding: 5px;
+        }
+    </style>
 </head>
 <body>
 <h1 id="firstName"></h1>
 <h1 id="lastName"></h1>
 <h1 id="email"></h1>
-<h1 id="address"></h1>
-<h1 id="contactNumber"></h1>
+<a href="/account/settings"><h1>Change Account Information</h1></a>
+<div id="books">
+
+</div>
 <script>
   // Function to display JSON data as list items
   function displayJsonData() {
-      var scriptInHead = document.getElementById("headScript");
+      let scriptInHead = document.getElementById("headScript");
 
       // Extract the content of the script element
-      var scriptContent = scriptInHead.textContent;
+      let scriptContent = scriptInHead.textContent;
       console.log(account);
-    document.getElementById("firstName").innerText = account.firstName;
-    document.getElementById("lastName").innerText = account.lastName;
-    document.getElementById("email").innerText = account.email;
-    document.getElementById("address").innerText = account.address;
-    document.getElementById("contactNumber").innerText = account.contactNumber;
+        document.getElementById("firstName").innerText = account.firstName;
+        document.getElementById("lastName").innerText = account.lastName;
+        document.getElementById("email").innerText = account.email;
+  }
+  function showBooks(data) {
+      console.log(data);
+      if (data.hasOwnProperty('error')) {
+          return;
+      }
+      let div = document.getElementById('books');
+      data.forEach(function(row) {
+          let link = document.createElement('a');
+          link.href = '/book/' + row['id'];
+          link.style.textDecoration = 'None';
+          link.style.color = 'inherit';
+          let book = document.createElement('div');
+          book.className = 'book';
+          Object.keys(row).forEach(key => {
+              const paragraph = document.createElement('p');
+              paragraph.textContent = `${key}: ${row[key]}`;
+              book.appendChild(paragraph);
+          });
+          link.appendChild(book);
+          div.appendChild(link);
+      });
+  }
+  function fetchLastBooks() {
+      fetch("/getLastBooks")
+          .then(response => response.json())
+          .then(data => showBooks(data))
+          .catch(error => console.error(error));
   }
 
   // Call the function when the page loads
-  window.onload = displayJsonData;
+  window.onload = function() {
+      displayJsonData();
+      fetchLastBooks();
+  }
 </script>
 </body>
 </html>

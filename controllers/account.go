@@ -17,6 +17,36 @@ func (s *LibServer) AccountHandler(w http.ResponseWriter, r *http.Request) error
 	return utils.MethodNotAllowed(w)
 }
 
+func (s *LibServer) AccountSettingsHandler(w http.ResponseWriter, r *http.Request) error {
+	if r.Method == "GET" {
+		html, err := os.ReadFile("static/accountSettings.html")
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(w, string(html))
+		return err
+	}
+	if r.Method != "POST" {
+		return utils.MethodNotAllowed(w)
+	}
+	acc, err := readJWT(r, s.store)
+	if err != nil {
+		return err
+	}
+	var newAcc types.Account
+	if err := json.NewDecoder(r.Body).Decode(&newAcc); err != nil {
+		return err
+	}
+	newAcc.ID = acc.ID
+	if err := newAcc.ValidateAccount(); err != nil {
+		return err
+	}
+	if err := s.store.UpdateAccount(&newAcc); err != nil {
+		return err
+	}
+	return WriteJSON(w, http.StatusOK, newAcc)
+}
+
 func (s *LibServer) GetAccountHandler(w http.ResponseWriter, r *http.Request) error {
 	if r.Method != "GET" {
 		return utils.MethodNotAllowed(w)
@@ -34,17 +64,13 @@ func (s *LibServer) GetAccountHandler(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 	jsonAcc := struct {
-		FirstName     string `json:"firstName"`
-		LastName      string `json:"lastName"`
-		Email         string `json:"email"`
-		Address       string `json:"address"`
-		ContactNumber string `json:"contactNumber"`
+		FirstName string `json:"firstName"`
+		LastName  string `json:"lastName"`
+		Email     string `json:"email"`
 	}{
 		account.FirstName,
 		account.LastName,
 		account.Email,
-		account.Address,
-		account.ContactNumber,
 	}
 	jsonAccMarsh, err := json.Marshal(jsonAcc)
 	if err != nil {
@@ -134,14 +160,12 @@ func (s *LibServer) AccountCreateHandler(w http.ResponseWriter, r *http.Request)
 
 	expiresAt := time.Now().Add(expiration * time.Minute).UTC()
 	req := types.UserRequest{
-		FirstName:     account.FirstName,
-		LastName:      account.LastName,
-		Password:      account.Password,
-		Email:         account.Email,
-		Address:       account.Address,
-		ContactNumber: account.ContactNumber,
-		Tag:           s.store.MakeToken("user_requests"),
-		ExpiresAt:     expiresAt,
+		FirstName: account.FirstName,
+		LastName:  account.LastName,
+		Password:  account.Password,
+		Email:     account.Email,
+		Tag:       s.store.MakeToken("user_requests"),
+		ExpiresAt: expiresAt,
 	}
 	fmt.Println(req)
 	err = s.store.CreateUserRequest(&req)
@@ -169,12 +193,10 @@ func (s *LibServer) AccountConfirm(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	account := &types.Account{
-		FirstName:     user.FirstName,
-		LastName:      user.LastName,
-		Email:         user.Email,
-		Password:      user.Password,
-		Address:       user.Address,
-		ContactNumber: user.ContactNumber,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
+		Password:  user.Password,
 	}
 	err = account.PasswordHash()
 	if err != nil {

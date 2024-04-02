@@ -4,35 +4,70 @@
     <meta charset="UTF-8">
     <title>Title</title>
     <script>
-        var books;
-      function populateData(data) {
-          var container = document.getElementById('containerDiv');
+      let books;
+      let libs;
+      var libsSet = {};
+      function sendData() {
+          let input = document.getElementById("inputField").value;
+          let data = JSON.stringify({"inputValue": input});
+          fetch("/search", {
+              method: "POST",
+              headers: {
+                  "Content-type": "application/json"
+              },
+              body: data
+          }).then(response => response.json())
+              .then(data => {
+                  if( !data.hasOwnProperty('error')) {
+                      books = data['books'];
+                      libs = data['libraries'];
+                  }
+                  populateData();
+              }).catch(error => console.error(error));
+      }
+
+      function populateData() {
+          //TODO: something
+          populateFilter();
+          showBooks(books);
+      }
+      function showBooks(data) {
+          let container = document.getElementById('containerDiv');
           container.innerHTML = '';
           data.forEach(jsonObject => {
               const div = document.createElement('div');
+              div.className = 'book';
+              const a = document.createElement('a');
+              a.href = '/book/' + jsonObject['id'];
+              a.style.textDecoration = 'none';
+              a.style.color = 'inherit';
               Object.keys(jsonObject).forEach(key => {
-                  // Create a paragraph element for each key-value pair
                   const paragraph = document.createElement('p');
                   paragraph.textContent = `${key}: ${jsonObject[key]}`;
                   div.appendChild(paragraph);
               });
-
-              // Add some styling to each div
-              div.style.border = "1px solid #ccc";
-              div.style.padding = "10px";
-              div.style.marginBottom = "10px";
-
-              // Append the div to the container
-              container.appendChild(div);
+              a.appendChild(div);
+              container.appendChild(a);
           });
       }
-      function yearAdd() {
-          var yearSelection = document.getElementById('year');
-          var langSelection = document.getElementById('language');
-          var genreSelection = document.getElementById('genre');
-          var years = [];
-          var langs = [];
-          var genres = [];
+      function clear(name, selName, array) {
+          let selection = document.getElementById(name);
+          selection.innerHTML = '';
+          let def = document.createElement('option');
+          def.text = 'Select ' + selName;
+          def.value = '';
+          selection.appendChild(def);
+          array.forEach(function(element) {
+              let option = document.createElement('option');
+              option.value = element;
+              option.text = element;
+              selection.appendChild(option);
+          });
+      }
+      function populateFilter() {
+          let years = [];
+          let langs = [];
+          let genres = [];
           books.forEach(jsonObject => {
               if( !years.includes(jsonObject['year'])) {
                   years.push(jsonObject['year']);
@@ -47,50 +82,48 @@
           years.sort(function(a,b) {
               return a - b;
           });
-          years.forEach(function(year) {
-              var option = document.createElement('option');
-              option.value = year;
-              option.text = year;
-              yearSelection.appendChild(option);
-          });
-          langs.forEach(function(lang) {
-              var option = document.createElement('option');
-              option.value = lang;
-              option.text = lang;
-              langSelection.appendChild(option);
-          });
-          genres.forEach(function(genre) {
-              var option = document.createElement('option');
-              option.value = genre;
-              option.text = genre;
-              genreSelection.appendChild(option);
+          clear('year', 'Year', years);
+          clear('language', 'Language', langs);
+          clear('genre', 'Genre', genres);
+          clear('library', 'Library', []);
+          let librarySelection = document.getElementById('library');
+          if(libs) {
+              libs.forEach(function (lib) {
+                  let option = document.createElement('option');
+                  option.value = lib['id'];
+                  option.text = lib['name'];
+                  librarySelection.appendChild(option);
+              });
+          }
+          fetchLibs();
+          addListener();
+      }
+      var libDict = {};
+      function addLibDict(id, data) {
+          //console.log(data);
+          if( data.hasOwnProperty('error')) {
+              return;
+          }
+          libDict[id] = [];
+          data.forEach(function(lib) {
+              libDict[id].push(lib['id']);
           });
       }
-      function sendData() {
-        var input = document.getElementById("inputField").value;
-        var data = JSON.stringify({"inputValue": input});
-        console.log(input);
-        fetch("/search", {
-            method: "POST",
-            headers: {
-                "Content-type": "application/json"
-            },
-            body: data
-        }).then(response => response.json())
-            .then(data => {
-                books = data;
-                populateData(books);
-                addListener();
-                yearAdd();
-        }).catch(error => {
-            console.error(error);
-        });
+      async function fetchLibs() {
+          libDict = {};
+          books.forEach(function(row) {
+              fetch('/getLibrariesByBook/' + row['id'])
+                  .then(response => response.json())
+                  .then(libsData => addLibDict(row['id'], libsData))
+                  .catch(error => console.error(error));
+          });
       }
       function filter() {
-          var year = document.getElementById('year').value;
-          var lang = document.getElementById('language').value;
-          var genre = document.getElementById('genre').value;
-          var valid = books.filter(function (book) {
+          let year = document.getElementById('year').value;
+          let lang = document.getElementById('language').value;
+          let genre = document.getElementById('genre').value;
+          let lib = document.getElementById('library').value;
+          let valid = books.filter(function (book) {
               if( year != '' && book.year != year) {
                   return false;
               }
@@ -100,9 +133,12 @@
               if( genre != '' && book.genre != genre) {
                   return false;
               }
+              if( lib != '' && libDict[book['id']] && !libDict[book['id']].includes(parseInt(lib))) {
+                  return false
+              }
               return true;
           });
-          populateData(valid);
+          showBooks(valid);
       }
       function addListener() {
           document.getElementById('filter').addEventListener("change", function() {
@@ -110,6 +146,13 @@
           });
       }
     </script>
+    <style>
+        .book {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
 <h3>Type name or author</h3>
@@ -124,6 +167,9 @@
     </select>
     <select id="genre">
         <option value="">Select Genre</option>
+    </select>
+    <select id="library">
+        <option value="">Select Library</option>
     </select>
 </form><button onclick="filter()">Filter</button><br><br>
 <div id="containerDiv"></div>

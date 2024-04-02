@@ -9,6 +9,18 @@ import (
 	"os"
 )
 
+func (s *LibServer) GetLibrariesByBookIDHandler(w http.ResponseWriter, r *http.Request) error {
+	id, err := utils.GetID(r)
+	if err != nil {
+		return err
+	}
+	libs, err := s.store.GetLibrariesByBookID(id)
+	if err != nil {
+		return err
+	}
+	return WriteJSON(w, http.StatusOK, libs)
+}
+
 func (s *LibServer) BookHandler(w http.ResponseWriter, r *http.Request) error {
 	if r.Method == "DELETE" {
 		return s.BookDeleteHandler(w, r)
@@ -24,6 +36,9 @@ func (s *LibServer) BookHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	book, err := s.store.GetBookByID(id)
+	if err != nil {
+		return err
+	}
 	bookJson, err := json.Marshal(book)
 	if err != nil {
 		return err
@@ -32,11 +47,14 @@ func (s *LibServer) BookHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(w, fmt.Sprintf("<script>var book = %s;</script>", bookJson))
-	if err != nil {
+	if _, err = fmt.Fprintf(w, fmt.Sprintf("<script>var book = %s;</script>", bookJson)); err != nil {
 		return err
 	}
 	_, err = fmt.Fprintf(w, string(html))
+	if acc, err := readJWT(r, s.store); err == nil {
+		fmt.Println("Adding a book", acc)
+		s.store.AddBookVisit(int(acc.ID), id)
+	}
 	return err
 }
 
