@@ -14,6 +14,7 @@ import (
 
 var dbuser string
 var dbpass string
+var dbname string
 
 type Storage interface {
 	CheckEmail(Email string) (bool, error)
@@ -64,8 +65,9 @@ func NewPostgresStorage() (*PostgresStorage, error) {
 	}
 	dbuser = os.Getenv("DBUSERNAME")
 	dbpass = os.Getenv("DBPASSWORD")
+	dbname = os.Getenv("DBNAME")
 	fmt.Println(dbuser, dbpass)
-	connect := fmt.Sprintf("user=%s password=%s dbname=postgres sslmode=disable", dbuser, dbpass)
+	connect := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", dbuser, dbpass, dbname)
 	DB, err := sql.Open("postgres", connect)
 	if err != nil {
 		return nil, err

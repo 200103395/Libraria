@@ -19,12 +19,12 @@ import (
 
 const (
 	expiration = 20
-	domain     = "http://localhost:8000"
 )
 
 var (
 	ErrorUnauthorized               = errors.New("unauthorized")
 	loginTimeMinutes  time.Duration = 120
+	domain            string
 )
 
 type LibServer struct {
@@ -50,6 +50,7 @@ func NewLibServer(listenAddr string, store database.Storage, email mail.Email) *
 }
 
 func (s *LibServer) Run() {
+	domain = os.Getenv("DOMAIN")
 	r := mux.NewRouter()
 	r.HandleFunc("/", MakeHTTPHandleFunc(s.HomeHandler)) // get books & libs
 	r.HandleFunc("/about", MakeHTTPHandleFunc(s.AboutHandler))
