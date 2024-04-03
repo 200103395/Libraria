@@ -48,6 +48,7 @@ func (s *LibServer) AccountSettingsHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (s *LibServer) GetAccountHandler(w http.ResponseWriter, r *http.Request) error {
+	s.store.OneTimeClear()
 	if r.Method != "GET" {
 		return utils.MethodNotAllowed(w)
 	}
@@ -97,8 +98,6 @@ func (s *LibServer) AccountLoginHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		_, err = fmt.Fprintf(w, string(html))
 		return err
-		//return WriteJSON(w, http.StatusOK, string(html))
-		// return HTML file
 	}
 	var req types.LoginRequest
 	fmt.Println(req)
@@ -141,7 +140,7 @@ func (s *LibServer) AccountCreateHandler(w http.ResponseWriter, r *http.Request)
 		_, err = fmt.Fprintf(w, string(html))
 		return err
 	}
-
+	s.store.OneTimeClear()
 	var account types.Account
 	if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
 		return err
@@ -184,6 +183,7 @@ func (s *LibServer) AccountCreateHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *LibServer) AccountConfirm(w http.ResponseWriter, r *http.Request) error {
+	s.store.OneTimeClear()
 	if r.Method != "GET" {
 		return utils.MethodNotAllowed(w)
 	}
@@ -207,8 +207,10 @@ func (s *LibServer) AccountConfirm(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	err = s.store.DeleteUserRequest(user)
-	if err != nil {
-		// do something
+	iter := 0
+	for err != nil || iter < 5 {
+		err = s.store.DeleteUserRequest(user)
+		iter++
 	}
 	html, err := os.ReadFile("static/accountConfirm.html")
 	_, err = fmt.Fprintf(w, string(html))

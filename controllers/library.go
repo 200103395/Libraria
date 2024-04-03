@@ -83,6 +83,7 @@ func (s *LibServer) LibraryCreateHandler(w http.ResponseWriter, r *http.Request)
 		return err
 		// return HTML file
 	}
+	s.store.OneTimeClear()
 	var library types.LibraryAccount
 	if err := json.NewDecoder(r.Body).Decode(&library); err != nil {
 		return err
@@ -124,6 +125,7 @@ func (s *LibServer) LibraryCreateHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *LibServer) LibraryConfirmHandler(w http.ResponseWriter, r *http.Request) error {
+	s.store.OneTimeClear()
 	if r.Method != "GET" {
 		return utils.MethodNotAllowed(w)
 	}

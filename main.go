@@ -30,7 +30,7 @@ func main() {
 
 	lib := controllers.NewLibServer(":8000", store, *email)
 
-	go store.ClearRequests()
+	//go store.ClearRequests()
 
 	lib.Run()
 

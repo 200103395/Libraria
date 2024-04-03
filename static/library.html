@@ -3,30 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC65D4aIoayQlkDFJJzBtqKVpIQHSEM2_4&libraries=places"></script>
+    <style>
+        #map {
+            height: 400px;
+            width: 100%;
+        }
+    </style>
 </head>
 <body>
     <h1>Libraries</h1>
+    <div id="map">
+
+    </div>
     <div id="libraries">
     </div>
 </body>
 <script>
+    let map;
+    let markers = [];
+    function mapInit() {
+        // TODO: Map initialize
+        map = new google.maps.Map(document.getElementById('map'), {
+            center: { lat: 43.24, lng: 76.88 }, // Initial coordinates (New York City)
+            zoom: 12 // Initial zoom level
+        });
+        marker = new google.maps.Marker({
+            map: map,
+            title: 'Library'
+        });
+        marker.setPosition(event.latLng);
+    }
+    function addMarker(lib) {
+        let marker = new google.maps.Marker({
+            map: map,
+            title: lib['name'],
+            position: {'lat': lib['latitude'], 'lng': lib['longitude']}
+        });
+        markers += marker;
+    }
+    function addMarker(lib) {
+        let marker = new google.maps.Marker({
+            map: map,
+            title: lib['name'],
+            position: {'lat': lib['latitude'], 'lng': lib['longitude']}
+        });
+        markers += marker;
+    }
+    function focus(lib) {
+        map.setCenter({'lat': lib.latitude, 'lng': lib.longitude});
+        map.setZoom(14);
+    }
     function display() {
-        libs = document.getElementById("libraries");
-        for(var key in libraries) {
-            var lib = libraries[key];
-            var item = document.createElement('ul');
-            var name = document.createElement('li');
-            var email = document.createElement('li');
-            var address = document.createElement('li');
-            var number = document.createElement('li');
+        let libs = document.getElementById("libraries");
+        for(let key in libraries) {
+            let lib = libraries[key];
+            addMarker(lib);
+            let item = document.createElement('ul');
+            let name = document.createElement('li');
+            let email = document.createElement('li');
+            let address = document.createElement('li');
+            let number = document.createElement('li');
             name.textContent = lib.libraryName;
             email.textContent = lib.email;
             address.textContent = lib.address;
             number.textContent = lib.contactNumber;
             item.append(name, email, address, number);
+            let button = document.createElement('button');
+            button.innerText = 'Show on map';
+            button.addEventListener('click', function() {
+                focus(lib);
+            });
+            item.appendChild(button);
             libs.append(item);
         }
     }
-    window.onload = display;
+    window.onload = function() {
+        mapInit();
+        display();
+    }
 </script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC65D4aIoayQlkDFJJzBtqKVpIQHSEM2_4&libraries=places"></script>
 </html>

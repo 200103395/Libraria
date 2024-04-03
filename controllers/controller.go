@@ -84,6 +84,7 @@ func (s *LibServer) Run() {
 	r.HandleFunc("/getSomeBooks", MakeHTTPHandleFunc(s.GetSomeBooksHandler))
 	r.HandleFunc("/getLibrariesByBook/{id}", MakeHTTPHandleFunc(s.GetLibrariesByBookIDHandler))
 	r.HandleFunc("/getLastBooks", MakeHTTPHandleFunc(s.GetLastBooks))
+	r.HandleFunc("/getBooksByLibrary/{id}", MakeHTTPHandleFunc(s.GetBooksByLibraryIDHandler))
 
 	if err := http.ListenAndServe(s.listenAddr, r); err != nil {
 		log.Fatal(err)

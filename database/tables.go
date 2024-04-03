@@ -206,3 +206,42 @@ func (s *PostgresStorage) ClearRequests() {
 		time.Sleep(1 * time.Minute)
 	}
 }
+
+func (s *PostgresStorage) OneTimeClear() {
+	fmt.Println("One time started")
+	start := time.Now()
+	_, err := s.DB.Exec(`delete from user_requests where expires_at < NOW() at time zone 'UTC'`)
+	if err != nil {
+		fmt.Println("Error while clearing user requests:", err)
+	}
+
+	_, err = s.DB.Exec(`delete from lib_requests where expires_at < NOW() at time zone 'UTC';`)
+	if err != nil {
+		fmt.Println("Error while clearing library requests:", err)
+	}
+
+	_, err = s.DB.Exec(`delete from password_reset where expires_at < NOW() at time zone 'UTC';`)
+	if err != nil {
+		fmt.Println("Error while clearing password requests:", err)
+	}
+
+	query := `WITH deletion_candidates AS (
+		SELECT user_id, book_id
+		FROM (
+			SELECT user_id, book_id, time,
+				   ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY time DESC) AS row_num
+			FROM last_books
+		) AS subquery
+		WHERE row_num > 5
+	)
+	DELETE FROM last_books
+	USING deletion_candidates
+	WHERE last_books.user_id = deletion_candidates.user_id
+	  AND last_books.book_id = deletion_candidates.book_id;`
+	_, err = s.DB.Exec(query)
+	if err != nil {
+		fmt.Println("Error while clearing last_books: ", err)
+	}
+	end := time.Now()
+	fmt.Println("One time ended. Time consumed: ", end.Sub(start))
+}

@@ -75,8 +75,8 @@
 
         document.getElementById('title').innerText = book['name'];
         window.onload = function() {
-            fetchLibs();
             mapInit();
+            fetchLibs();
         }
         function fetchLibs() {
             fetch('/getLibrariesByBook/' + book['id'])

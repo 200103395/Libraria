@@ -21,6 +21,18 @@ func (s *LibServer) GetLibrariesByBookIDHandler(w http.ResponseWriter, r *http.R
 	return WriteJSON(w, http.StatusOK, libs)
 }
 
+func (s *LibServer) GetBooksByLibraryIDHandler(w http.ResponseWriter, r *http.Request) error {
+	id, err := utils.GetID(r)
+	if err != nil {
+		return err
+	}
+	books, err := s.store.GetBooksByLibraryID(id)
+	if err != nil {
+		return err
+	}
+	return WriteJSON(w, http.StatusOK, books)
+}
+
 func (s *LibServer) BookHandler(w http.ResponseWriter, r *http.Request) error {
 	if r.Method == "DELETE" {
 		return s.BookDeleteHandler(w, r)

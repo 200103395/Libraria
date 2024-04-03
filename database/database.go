@@ -36,6 +36,7 @@ type Storage interface {
 	CreateLibRequest(request *types.LibRequest) error
 	DeleteLibRequest(request *types.LibRequest) error
 	ClearRequests()
+	OneTimeClear()
 	CreateBook(book *types.Book) error
 	GetBooks() (*[]types.Book, error)
 	GetSomeBooks() (*[]types.Book, error)
@@ -47,6 +48,7 @@ type Storage interface {
 	GetPasswordReset(token string) (*types.PasswordResetRequest, error)
 	DeletePasswordReset(request *types.PasswordResetRequest) error
 	GetLibrariesByBookID(id int) (*[]types.LibraryAccount, error)
+	GetBooksByLibraryID(id int) (*[]types.Book, error)
 	AddBookVisit(user_id, book_id int)
 	GetLastBooks(id int) (*[]types.Book, error)
 }
@@ -262,6 +264,30 @@ func (s *PostgresStorage) GetLastBooks(id int) (*[]types.Book, error) {
 	}
 	if len(books) == 0 {
 		return nil, fmt.Errorf("No books found")
+	}
+	return &books, nil
+}
+
+func (s *PostgresStorage) GetBooksByLibraryID(id int) (*[]types.Book, error) {
+	var books []types.Book
+	query := `select id, name, author, year, genre, description, language, page_number 
+	from book join (
+		select distinct(book_id) from book_lib
+		where library_id = $1
+	) as sub on id = book_id;`
+	rows, err := s.DB.Query(query, id)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var book types.Book
+		if err = rows.Scan(book.Pointers()); err != nil {
+			continue
+		}
+		books = append(books, book)
+	}
+	if len(books) == 0 {
+		return nil, fmt.Errorf("no books found")
 	}
 	return &books, nil
 }

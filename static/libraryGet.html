@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <title>Title</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC65D4aIoayQlkDFJJzBtqKVpIQHSEM2_4&libraries=places"></script>
+    <style>
+        #books {
+            display: flex;
+        }
+        .book {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
 <h1 id="libraryName"></h1>
@@ -13,6 +23,9 @@
 <div id="settings"></div>
 
 <div id="map" style="border: 1px; height: 400px; width: 400px;"></div>
+<div id="books">
+
+</div>
 <script>
     function initMap() {
         // Initialize the map
@@ -64,9 +77,38 @@
             document.getElementById('settings').appendChild(a);
         }
     }
+    function showBooks(books) {
+        let container = document.getElementById('books');
+        container.innerHTML = '';
+        books.forEach(jsonObject => {
+            const div = document.createElement('div');
+            div.className = 'book';
+            const a = document.createElement('a');
+            a.href = '/book/' + jsonObject['id'];
+            a.style.textDecoration = 'none';
+            a.style.color = 'inherit';
+            Object.keys(jsonObject).forEach(key => {
+                const paragraph = document.createElement('p');
+                paragraph.textContent = `${key}: ${jsonObject[key]}`;
+                div.appendChild(paragraph);
+            });
+            a.appendChild(div);
+            container.appendChild(a);
+        });
+    }
+    function fetchBooks() {
+        fetch('/getBooksByLibrary/' + lib['id'])
+            .then(response => response.json())
+            .then(data => showBooks(data))
+            .catch(error => console.error(error));
+    }
 
     // Call the function when the page loads
-    window.onload = displayJsonData;
+    window.onload = function() {
+        displayJsonData();
+        fetchBooks();
+        //TODO: CREATE A SEARCH OR FILTER FEATURE
+    }
 </script>
 
 

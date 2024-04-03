@@ -24,6 +24,7 @@ func (s *LibServer) PasswordResetConfirmHandler(w http.ResponseWriter, r *http.R
 		_, err = fmt.Fprintf(w, string(html))
 		return err
 	}
+	s.store.OneTimeClear()
 	token := utils.GetTAG(r)
 	req, err := s.store.GetPasswordReset(token)
 	fmt.Println(req, err, token)
@@ -75,7 +76,7 @@ func (s *LibServer) PasswordResetHandler(w http.ResponseWriter, r *http.Request)
 		_, err = fmt.Fprintf(w, string(html))
 		return err
 	}
-
+	s.store.OneTimeClear()
 	var jspost struct {
 		Email string `json:"email"`
 	}
