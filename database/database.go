@@ -67,7 +67,8 @@ func NewPostgresStorage() (*PostgresStorage, error) {
 	dbpass = os.Getenv("DBPASSWORD")
 	dbname = os.Getenv("DBNAME")
 	fmt.Println(dbuser, dbpass)
-	connect := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", dbuser, dbpass, dbname)
+	//time.Sleep(5 * time.Second)
+	connect := fmt.Sprintf("user=%s password=%s dbname=%s host=libraria-psql port=5432 sslmode=disable", dbuser, dbpass, dbname)
 	DB, err := sql.Open("postgres", connect)
 	if err != nil {
 		return nil, err

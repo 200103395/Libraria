@@ -15,6 +15,7 @@
             width: 100vw;
             overflow-x: auto;
             white-space: nowrap;
+            margin: 20px 0 0 0;
         }
         #libraries {
             display: flex;
@@ -42,19 +43,67 @@
             border-radius: 5px;
             padding: 5px;
         }
+        .line {
+            width: fit-content;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .book-container {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 0 20px 20px 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+            width: 400px;
+        }
+        .book-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .book-author {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-style: italic;
+            color: #555;
+            margin-bottom: 10px;
+        }
+        .book-info {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .book-description {
+            font-size: 14px;
+            color: #777;
+            margin-bottom: 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-wrap: break-word;
+            display: -webkit-box;
+            -webkit-line-clamp: 3; /* Number of lines to show */
+            -webkit-box-orient: vertical;
+        }
         p {
             overflow-x: auto;
         }
     </style>
 </head>
 <body>
-<div class="mainBlock">
 <include src="header.html"></include>
 <h1>Main page</h1>
 <br>
 <div id="account"></div>
+<div class="mainBlock">
 <div id="books"></div>
     <br>
+</div><div class="mainBlock">
 <div id="libraries"></div>
 </div>
 <script>
@@ -101,13 +150,37 @@
             a.href = '/book/' + jsonObject['id'];
             a.style.textDecoration = 'none';
             a.style.color = 'inherit';
-            div.className = 'book';
+            div.className = 'book-container';/*
             Object.keys(jsonObject).forEach(key => {
                 // Create a paragraph element for each key-value pair
                 const paragraph = document.createElement('p');
                 paragraph.textContent = `${key}: ${jsonObject[key]}`;
                 div.appendChild(paragraph);
-            });
+            });*/
+            const title = document.createElement('div'); title.className = 'line book-title';
+            const author = document.createElement('div'); author.className = 'line book-author';
+            const info = document.createElement('div'); info.className = 'line book-info';
+            const desc = document.createElement('div'); desc.className = 'book-description';
+            title.innerText = jsonObject['name'];
+            author.innerText = jsonObject['author'];
+            let text = "Year: " + jsonObject['year'] + " | Genre: " + jsonObject['genre'] + " | Language: " + jsonObject['language'] + " | Pages " + jsonObject['pageNumber'];
+            info.innerText = text;
+            desc.innerText = jsonObject['description'];
+            let width = title.style.width;
+            if(author.style.width > width) {
+                width = author.style.width;
+            }
+            if(info.style.width > width) {
+                width = info.style.width;
+            }
+            desc.style.maxWidth = `${width}px`;
+            if(jsonObject['description'].length > 500) {
+                desc.innerText = jsonObject['description'].substring(0, 500) + '...';
+            }
+            if(desc.innerText == '') {
+                desc.innerText = 'No description';
+            }
+            div.append(title, author, info, desc);
 
             a.appendChild(div);
             container.appendChild(a);
