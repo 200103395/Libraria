@@ -12,9 +12,13 @@ import (
 	"time"
 )
 
-var dbuser string
-var dbpass string
-var dbname string
+var (
+	dbuser string
+	dbpass string
+	dbname string
+	dbport string
+	dbhost string
+)
 
 type Storage interface {
 	CheckEmail(Email string) (bool, error)
@@ -66,9 +70,11 @@ func NewPostgresStorage() (*PostgresStorage, error) {
 	dbuser = os.Getenv("DBUSERNAME")
 	dbpass = os.Getenv("DBPASSWORD")
 	dbname = os.Getenv("DBNAME")
+	dbhost = os.Getenv("DBHOST")
+	dbport = os.Getenv("DBPORT")
 	fmt.Println(dbuser, dbpass)
 	//time.Sleep(5 * time.Second)
-	connect := fmt.Sprintf("user=%s password=%s dbname=%s host=libraria-psql port=5432 sslmode=disable", dbuser, dbpass, dbname)
+	connect := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=disable", dbuser, dbpass, dbname, dbhost, dbport)
 	DB, err := sql.Open("postgres", connect)
 	if err != nil {
 		return nil, err

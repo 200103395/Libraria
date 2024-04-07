@@ -13,10 +13,9 @@ RUN go mod download
 # Copy the rest of the application code to the working directory
 COPY . ./
 
-RUN apt-get update
-RUN apt-get -y install postgresql-client
-
-RUN chmod +x ./wait-for-postgres.sh
+# RUN apt-get update
+# RUN apt-get -y install postgresql-client
+# RUN chmod +x ./wait-for-postgres.sh
 
 # Build the Go application
 RUN go build -o app .
