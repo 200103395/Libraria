@@ -16,7 +16,7 @@ services:
       timeout: 5s
       retries: 5
   app:
-    image: almas200103395/lib-app
+    image: almas200103395/lib-app:latest
     container_name: lib-app
     ports:
       - "80:8000"

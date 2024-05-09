@@ -137,12 +137,15 @@ func (s *LibServer) AccountCreateHandler(w http.ResponseWriter, r *http.Request)
 		if err != nil {
 			return err
 		}
+		w.Header().Add("Content-Type", "text/html")
 		_, err = fmt.Fprintf(w, string(html))
 		return err
 	}
 	s.store.OneTimeClear()
 	var account types.Account
+
 	if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
+		fmt.Println(account, err)
 		return err
 	}
 	if err := account.ValidateAccount(); err != nil {

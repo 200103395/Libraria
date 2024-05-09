@@ -85,20 +85,12 @@ type Book struct {
 	Genre       string `json:"genre"`
 	Description string `json:"description"`
 	Language    string `json:"language"`
-	PageNumber  uint   `json:"pageNumber"`
 }
 
 type LibraryBook struct {
 	BookID    uint `json:"bookID"`
 	LibraryID uint `json:"libraryID"`
 	Amount    uint `json:"amount"`
-}
-
-type Borrow struct {
-	BookID     uint      `json:"bookID"`
-	AccountID  uint      `json:"accountID"`
-	LibraryID  uint      `json:"libraryID"`
-	BorrowedAt time.Time `json:"borrowedAt"`
 }
 
 func (lib *LibraryAccount) ConvertToWeb() (webLibs *LibraryWeb) {
@@ -113,8 +105,8 @@ func (lib *LibraryAccount) ConvertToWeb() (webLibs *LibraryWeb) {
 	}
 }
 
-func (book *Book) Pointers() (*uint, *string, *string, *uint, *string, *string, *string, *uint) {
-	return &book.ID, &book.Name, &book.Author, &book.Year, &book.Genre, &book.Description, &book.Language, &book.PageNumber
+func (book *Book) Pointers() (*uint, *string, *string, *uint, *string, *string) {
+	return &book.ID, &book.Name, &book.Author, &book.Year, &book.Genre, &book.Description
 }
 
 func (account *Account) Pointers() (*uint, *string, *string, *string, *string) {

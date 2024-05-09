@@ -2,13 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Search</title>
+    <link rel="icon" type="image/jpg" href="https://static.vecteezy.com/system/resources/thumbnails/002/219/582/small_2x/illustration-of-book-icon-free-vector.jpg">
     <script>
       let books;
       let libs;
       var libsSet = {};
       function sendData() {
-          let input = document.getElementById("inputField").value;
+          let input = document.getElementById("search").value;
+          if(input.length < 3) {
+              alert("Word is too small");
+              return;
+          }
           let data = JSON.stringify({"inputValue": input});
           fetch("/search", {
               method: "POST",
@@ -32,22 +37,30 @@
           showBooks(books);
       }
       function showBooks(data) {
-          let container = document.getElementById('containerDiv');
+          let container = document.getElementById('books');
           container.innerHTML = '';
           data.forEach(jsonObject => {
+              const item = document.createElement('div');
               const div = document.createElement('div');
-              div.className = 'book';
               const a = document.createElement('a');
               a.href = '/book/' + jsonObject['id'];
               a.style.textDecoration = 'none';
               a.style.color = 'inherit';
-              Object.keys(jsonObject).forEach(key => {
-                  const paragraph = document.createElement('p');
-                  paragraph.textContent = `${key}: ${jsonObject[key]}`;
-                  div.appendChild(paragraph);
-              });
+              item.className = 'book-item';
+              div.className = 'book-container';
+
+              const title = document.createElement('div'); title.className = 'line book-title';
+              const author = document.createElement('div'); author.className = 'line book-author';
+              const info = document.createElement('div'); info.className = 'line book-info';
+              title.innerText = jsonObject['name'];
+              author.innerText = jsonObject['author'];
+              let text = "Year: " + jsonObject['year'] + " | Genre: " + jsonObject['genre']; // + " | Pages " + jsonObject['pageNumber']
+              info.innerText = text;
+              div.append(title, author, info);
+
               a.appendChild(div);
-              container.appendChild(a);
+              item.appendChild(a);
+              container.appendChild(item);
           });
       }
       function clear(name, selName, array) {
@@ -66,15 +79,15 @@
       }
       function populateFilter() {
           let years = [];
-          let langs = [];
+          //let langs = [];
           let genres = [];
           books.forEach(jsonObject => {
               if( !years.includes(jsonObject['year'])) {
                   years.push(jsonObject['year']);
               }
-              if( !langs.includes(jsonObject['language'])) {
+              /*if( !langs.includes(jsonObject['language'])) {
                   langs.push(jsonObject['language']);
-              }
+              }*/
               if( !genres.includes(jsonObject['genre'])) {
                   genres.push(jsonObject['genre']);
               }
@@ -83,7 +96,7 @@
               return a - b;
           });
           clear('year', 'Year', years);
-          clear('language', 'Language', langs);
+          //clear('language', 'Language', langs);
           clear('genre', 'Genre', genres);
           clear('library', 'Library', []);
           let librarySelection = document.getElementById('library');
@@ -97,6 +110,8 @@
           }
           fetchLibs();
           addListener();
+          document.getElementById('filter').style.display = 'block';
+          document.getElementById('btn').style.display = 'block';
       }
       var libDict = {};
       function addLibDict(id, data) {
@@ -120,16 +135,16 @@
       }
       function filter() {
           let year = document.getElementById('year').value;
-          let lang = document.getElementById('language').value;
+          //let lang = document.getElementById('language').value;
           let genre = document.getElementById('genre').value;
           let lib = document.getElementById('library').value;
           let valid = books.filter(function (book) {
               if( year != '' && book.year != year) {
                   return false;
               }
-              if( lang != '' && book.language != lang) {
+              /*if( lang != '' && book.language != lang) {
                   return false;
-              }
+              }*/
               if( genre != '' && book.genre != genre) {
                   return false;
               }
@@ -144,26 +159,204 @@
           document.getElementById('filter').addEventListener("change", function() {
               filter();
           });
+      }window.onload = fetchAccount;
+      function fetchAccount() {
+          let account;
+          fetch('/getAuth').then(response => response.json())
+              .then(data => {
+                  account = data;
+                  if( data.hasOwnProperty('error')) {
+                      console.log("Has error");
+                  } else {
+                      console.log("Doesn't have error", JSON.stringify(data));
+                      let drop1 = document.getElementById('dropdown1');
+                      let drop2 = document.getElementById('dropdown2');
+                      let li1 = document.createElement('li');
+                      let li2 = document.createElement('li');
+                      drop1.innerHTML = '';
+                      drop2.innerHTML = '';
+                      let link = document.createElement('a');
+                      link.href = '/account/' + account.id;
+                      link.innerText = account.firstName + ' ' + account.lastName;
+                      link.style.textDecoration = "none";
+                      link.style.color = "white";
+                      li1.appendChild(link);
+                      drop1.appendChild(li1);
+                      let out = document.createElement('a');
+                      out.innerText = "Log Out";
+                      out.style.textDecoration = "none";
+                      out.style.color = "white";
+                      out.addEventListener("click", function() {
+                          let result = confirm("Are you sure you want to logout?");
+                          if(result) {
+                              window.location.href = '/unAuthorize';
+                          }
+                      });
+                      li2.appendChild(out);
+                      drop2.appendChild(li2);
+                  }
+              })
+              .catch(error => {
+                  console.error('Error fetching account information: ', error);
+              });
+          console.log(account);
+      }
+      window.onload = function () {
+          fetch('/getHeader').then(response => response.text())
+              .then(html => {
+                  document.body.innerHTML = html + document.body.innerHTML;
+                  fetchAccount();
+              }).catch(error => {
+              console.error(error);
+          });
+          fetchBooks();
+          fetchLibraries();
+          fetchAccount();
+      }
+      function fetchAccount() {
+          let account;
+          fetch('/getAuth').then(response => response.json())
+              .then(data => {
+                  account = data;
+                  if( data.hasOwnProperty('error')) {
+                      console.log("Has error");
+                  } else {
+                      console.log("Doesn't have error", JSON.stringify(data));
+                      let drop1 = document.getElementById('dropdown1');
+                      let drop2 = document.getElementById('dropdown2');
+                      let li1 = document.createElement('li');
+                      let li2 = document.createElement('li');
+                      drop1.innerHTML = '';
+                      drop2.innerHTML = '';
+                      let link = document.createElement('a');
+                      link.href = '/account/' + account.id;
+                      link.innerText = account.firstName + ' ' + account.lastName;
+                      link.style.textDecoration = "none";
+                      link.style.color = "white";
+                      li1.appendChild(link);
+                      drop1.appendChild(li1);
+                      let out = document.createElement('a');
+                      out.innerText = "Log Out";
+                      out.style.textDecoration = "none";
+                      out.style.color = "white";
+                      out.addEventListener("click", function() {
+                          let result = confirm("Are you sure you want to logout?");
+                          if(result) {
+                              window.location.href = '/unAuthorize';
+                          }
+                      });
+                      li2.appendChild(out);
+                      drop2.appendChild(li2);
+                  }
+              })
+              .catch(error => {
+                  console.error('Error fetching account information: ', error);
+              });
+          console.log(account);
       }
     </script>
     <style>
-        .book {
+        body {
+            margin: 0;
+            padding: 0;
+            background: rgba(150, 214, 233, 0.479) ;
+            height: 100%;
+        }
+        .book-item {
+            text-align: center;
+        }
+        .book-container {
             border: 1px solid #ccc;
-            padding: 10px;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 0 20px 20px 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+            width: 400px;
+            overflow: hidden;
+        }
+        .book-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .book-author {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-style: italic;
+            color: #555;
             margin-bottom: 10px;
+        }
+        .book-info {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        #books {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            width: 100%;
+        }
+        .book {
+            width: 20vw;
+            border: 1px solid white;
+            background: white;
+            margin: 5px;
+            border-radius: 5px;
+            padding: 5px;
+        }
+        #inputField {
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 8px 16px;
+            font-size: 16px;
+            background-color: #0e3f67;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #1b9bff;
+        }
+
+        select {
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .search-bar {
+            display: flex;
+            justify-content: center;
+        }
+        .filter-bar {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            margin-bottom: 40px;
         }
     </style>
 </head>
 <body>
-<h3>Type name or author</h3>
-<input type="text" id="inputField">
-<button onclick="sendData()">Search</button><br><br>
-<form id="filter">
+<div class="search-bar">
+    <input type="text" id="search" name="search" placeholder="Type name of book or library here..." style="width: 350px; padding: 3px; border-radius: 5px; margin-right: 20px; font-size: 18px">
+    <button onclick="sendData()">Search</button><br><br>
+</div>
+<div class="filter-bar">
+<form id="filter" style="display: none;">
     <select id="year">
         <option value="">Select Year</option>
-    </select>
-    <select id="language">
-        <option value="">Select Language</option>
     </select>
     <select id="genre">
         <option value="">Select Genre</option>
@@ -171,7 +364,8 @@
     <select id="library">
         <option value="">Select Library</option>
     </select>
-</form><button onclick="filter()">Filter</button><br><br>
-<div id="containerDiv"></div>
+</form><div><button onclick="filter()" id="btn" style="margin-left: 10px; display: none;">Filter</button></div><br><br>
+</div>
+<div id="books"></div>
 </body>
 </html>

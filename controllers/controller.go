@@ -52,12 +52,13 @@ func NewLibServer(listenAddr string, store database.Storage, email mail.Email) *
 func (s *LibServer) Run() {
 	domain = os.Getenv("DOMAIN")
 	r := mux.NewRouter()
+
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
+
 	r.HandleFunc("/", MakeHTTPHandleFunc(s.HomeHandler)) // get books & libs
 	r.HandleFunc("/about", MakeHTTPHandleFunc(s.AboutHandler))
 	r.HandleFunc("/search", MakeHTTPHandleFunc(s.SearchHandler)) // search & filter
 
-	r.HandleFunc("/login", MakeHTTPHandleFunc(s.LoginHandler))
-	r.HandleFunc("/register", MakeHTTPHandleFunc(s.RegisterHandler))
 	r.HandleFunc("/account/settings", MakeHTTPHandleFunc(s.AccountSettingsHandler))
 	r.HandleFunc("/account/confirm/{tag}", MakeHTTPHandleFunc(s.AccountConfirm))
 	r.HandleFunc("/account/register", MakeHTTPHandleFunc(s.AccountCreateHandler))
@@ -104,7 +105,6 @@ func (s *LibServer) HomeHandler(w http.ResponseWriter, r *http.Request) error {
 	if _, err = fmt.Fprintf(w, string(index)); err != nil {
 		return err
 	}
-	_, err = w.Write([]byte("Hello, World!")) //return HTML for page
 	return err
 }
 
@@ -120,24 +120,6 @@ func (s *LibServer) AboutHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	err = WriteJSON(w, http.StatusOK, "Hello, World! This is us")
-	return err
-}
-
-func (s *LibServer) LoginHandler(w http.ResponseWriter, r *http.Request) error {
-	html, err := os.ReadFile("static/login.html")
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprintf(w, string(html))
-	return err
-}
-
-func (s *LibServer) RegisterHandler(w http.ResponseWriter, r *http.Request) error {
-	html, err := os.ReadFile("static/register.html")
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprintf(w, string(html))
 	return err
 }
 

@@ -161,8 +161,8 @@ func (s *PostgresStorage) AddBookVisit(user_id, book_id int) {
 }
 
 func (s *PostgresStorage) CreateBook(book *types.Book) error {
-	query := `insert into book (name, author, year, genre, description, language, page_number) values ($1, $2, $3, $4, $5, $6, $7);`
-	_, err := s.DB.Exec(query, book.Name, book.Author, book.Year, book.Genre, book.Description, book.Language, book.PageNumber)
+	query := `insert into book (name, author, year, genre, description, language, page_number) values ($1, $2, $3, $4, $5, $6);`
+	_, err := s.DB.Exec(query, book.Name, book.Author, book.Year, book.Genre, book.Description, book.Language)
 	return err
 }
 
@@ -186,15 +186,19 @@ func (s *PostgresStorage) GetBooks() (*[]types.Book, error) {
 
 func (s *PostgresStorage) GetSomeBooks() (*[]types.Book, error) {
 	var books []types.Book
-	query := `select * from book limit 15;`
+	query := `select id,name,author,year,genre,description from book join 
+(select * from (select count(library_id) as cnt, book_id from book_lib 
+				group by book_id)) on book.id = book_id order by cnt desc limit 15;`
 	rows, err := s.DB.Query(query)
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 	for rows.Next() {
 		var book types.Book
 		err = rows.Scan(book.Pointers())
 		if err != nil {
+			fmt.Println(err)
 			continue
 		}
 		books = append(books, book)
@@ -216,7 +220,11 @@ func (s *PostgresStorage) GetBookByID(id int) (*types.Book, error) {
 
 func (s *PostgresStorage) SearchBookName(name string) (*[]types.Book, *[]types.LibraryWeb, error) {
 	var books []types.Book
-	query := `select * from book where lower(name) like $1 or lower(author) like $1 or lower(genre) like $1;`
+	query := `select * from (
+select id,name,author,year,genre,description from book join 
+(select * from (select count(library_id) as cnt, book_id from book_lib 
+				group by book_id)) on book.id = book_id order by cnt desc)
+where lower(name) like $1 or lower(author) like $1 or lower(genre) like $1;`
 	name = "%" + strings.ToLower(name) + "%"
 	rows, err := s.DB.Query(query, name)
 	if err != nil {
@@ -266,7 +274,7 @@ func (s *PostgresStorage) GetLastBooks(id int) (*[]types.Book, error) {
 		var book types.Book
 		var temp int
 		var tim time.Time
-		if err = row.Scan(&book.ID, &book.Name, &book.Author, &book.Year, &book.Genre, &book.Description, &book.Language, &book.PageNumber, &temp, &tim); err != nil {
+		if err = row.Scan(&book.ID, &book.Name, &book.Author, &book.Year, &book.Genre, &book.Description, &temp, &tim); err != nil {
 			return nil, err
 		}
 		books = append(books, book)
@@ -279,7 +287,7 @@ func (s *PostgresStorage) GetLastBooks(id int) (*[]types.Book, error) {
 
 func (s *PostgresStorage) GetBooksByLibraryID(id int) (*[]types.Book, error) {
 	var books []types.Book
-	query := `select id, name, author, year, genre, description, language, page_number 
+	query := `select id, name, author, year, genre, description 
 	from book join (
 		select distinct(book_id) from book_lib
 		where library_id = $1
@@ -332,8 +340,8 @@ func (s *PostgresStorage) DeleteBookByID(id int) error {
 }
 
 func (s *PostgresStorage) UpdateBook(book types.Book) error {
-	query := `update book set name = $1, author = $2, year = $3, genre = $4, description = $5, language = $6, page_number = $7 where id = $8`
-	_, err := s.DB.Exec(query, book.Name, book.Author, book.Year, book.Genre, book.Description, book.Language, book.PageNumber, book.ID)
+	query := `update book set name = $1, author = $2, year = $3, genre = $4, description = $5, language = $6 where id = $7`
+	_, err := s.DB.Exec(query, book.Name, book.Author, book.Year, book.Genre, book.Description, book.Language, book.ID)
 	return err
 }
 

@@ -2,72 +2,130 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title id="title">Title</title>
+    <title id="title">Book</title>
+    <link rel="icon" type="image/jpg" href="https://static.vecteezy.com/system/resources/thumbnails/002/219/582/small_2x/illustration-of-book-icon-free-vector.jpg">>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC65D4aIoayQlkDFJJzBtqKVpIQHSEM2_4&libraries=places"></script>
     <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: rgba(150, 214, 233, 0.479) ;
+            height: 100%;
+        }
         .library {
-            border: black 1px solid;
+            overflow-y: auto;
+            text-align: center;
+            border: 1px solid white;
+            background: white;
+            margin: 5px 30px 5px 30px;
+            border-radius: 5px;
+            padding: 5px;
+        }
+        .library-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .library-address {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 14px;
+            color: #333;
             margin-bottom: 10px;
-            padding: 10px;
+        }
+        .library-number {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        #libraries {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
         }
         #map {
-            height: 400px;
-            width: 100%;
+            height: 300px;
+            width: 1000px;
+            margin-left: 250px;
+        }
+        #containerDiv{
+            padding:10px;
+            margin-bottom:60px;
+            text-align: center;
+        }
+        .book-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .book-author {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-style: italic;
+            color: #555;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .book-year {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .book-genre {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
+    <div style="display: flex;justify-content: center;align-items: center;">
     <div id="containerDiv">
 
-    </div>
+    </div></div>
+    <h2 style="text-align: center; padding-bottom: 15px">Libraries with this book</h2>
     <div id="map">
 
-    </div>
+    </div><br>
     <div id="libraries">
 
     </div>
     <script>
         let map;
         let markers = [];
-        function mapInit() {
-            // TODO: Map initialize
-            map = new google.maps.Map(document.getElementById('map'), {
-                center: { lat: 43.24, lng: 76.88 }, // Initial coordinates (New York City)
-                zoom: 12 // Initial zoom level
-            });
-            marker = new google.maps.Marker({
-                map: map,
-                title: 'Library'
-            });
-            marker.setPosition(event.latLng);
-        }
-        function addMarker(lib) {
-            let marker = new google.maps.Marker({
-                map: map,
-                title: lib['name'],
-                position: {'lat': lib['latitude'], 'lng': lib['longitude']}
-            });
-            markers += marker;
-        }
+        let libs_marks = [];
         let container = document.getElementById('containerDiv');
         container.innerHTML = '';
+        container.style.width = "600px";
         const a = document.createElement('a');
         a.href = '/book/' + book['id'];
         a.style.textDecoration = 'none';
         a.style.color = 'inherit';
         const div = document.createElement('div');
         console.log(book);
-        Object.keys(book).forEach(key => {
-            // Create a paragraph element for each key-value pair
-            const paragraph = document.createElement('p');
-            paragraph.textContent = `${key}: ${book[key]}`;
-            div.appendChild(paragraph);
-        });
+        let title = document.createElement('p'); title.className = 'book-title';
+        let author = document.createElement('p'); author.className = 'book-author';
+        let year = document.createElement('p'); year.className = 'book-year';
+        let genre = document.createElement('p'); genre.className = 'book-genre';
+        title.innerText = book['name'];
+        author.innerText = book['author'];
+        year.innerText = book['year'];
+        genre.innerText = 'Genre: ' + book['genre'];
+        if(book['genre'] === '') {
+            div.append(title, author, year);
+        } else {
+            div.append(title, author, year, genre);
+        }
 
-        // Add some styling to each div
-        div.style.border = "1px solid #ccc";
-        div.style.padding = "10px";
-        div.style.marginBottom = "10px";
 
         // Append the div to the container
         a.appendChild(div);
@@ -75,33 +133,111 @@
 
         document.getElementById('title').innerText = book['name'];
         window.onload = function() {
-            mapInit();
+            fetchHeader();
             fetchLibs();
+            fetchAccount();
+            let inter = setInterval(function() {
+                mapInit();
+            }, 500);
+            setTimeout(function() {
+                clearInterval(inter)
+            }, 500);
+        }
+        function fetchAccount() {
+            let account;
+            fetch('/getAuth').then(response => response.json())
+                .then(data => {
+                    account = data;
+                    if( data.hasOwnProperty('error')) {
+                        console.log("Has error");
+                    } else {
+                        console.log("Doesn't have error", JSON.stringify(data));
+                        let drop1 = document.getElementById('dropdown1');
+                        let drop2 = document.getElementById('dropdown2');
+                        let li1 = document.createElement('li');
+                        let li2 = document.createElement('li');
+                        drop1.innerHTML = '';
+                        drop2.innerHTML = '';
+                        let link = document.createElement('a');
+                        link.href = '/account/' + account.id;
+                        link.innerText = account.firstName + ' ' + account.lastName;
+                        link.style.textDecoration = "none";
+                        link.style.color = "white";
+                        li1.appendChild(link);
+                        drop1.appendChild(li1);
+                        let out = document.createElement('a');
+                        out.innerText = "Log Out";
+                        out.style.textDecoration = "none";
+                        out.style.color = "white";
+                        out.addEventListener("click", function() {
+                            let result = confirm("Are you sure you want to logout?");
+                            if(result) {
+                                window.location.href = '/unAuthorize';
+                            }
+                        });
+                        li2.appendChild(out);
+                        drop2.appendChild(li2);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching account information: ', error);
+                });
+            console.log(account);
+        }
+        function fetchHeader() {
+            fetch('/getHeader').then(response => response.text())
+                .then(html => {
+                    document.body.innerHTML = html + document.body.innerHTML;
+                    fetchAccount();
+                }).catch(error => {
+                console.error(error);
+            });
         }
         function fetchLibs() {
+
             fetch('/getLibrariesByBook/' + book['id'])
                 .then(response => response.json())
                 .then(data => showLibraries(data))
                 .catch(error => console.error(error));
         }
         function showLibraries(data) {
-            let div = document.getElementById('libraries');
+            let mainDiv = document.getElementById('libraries');
             data.forEach(function(row) {
-                addMarker(row);
+                libs_marks.push(row);
                 let lib = document.createElement('div');
+                let div = document.createElement('div');
                 lib.className = 'library';
                 let link = document.createElement('a');
                 link.style.textDecoration = 'None';
                 link.style.color = 'inherit';
                 link.href = '/library/' + row['id'];
-                Object.keys(row).forEach(key => {
-                    const par = document.createElement('p');
-                    par.textContent = `${key}: ${row[key]}`;
-                    lib.appendChild(par);
-                });
+
+                let name = document.createElement('p'); name.className = 'library-title';
+                let address = document.createElement('p'); address.className = 'library-address';
+                let number = document.createElement('p'); number.className = 'library-number';
+                name.innerText = row['name'];
+                address.innerText = row['address'];
+                number.innerText = row['email'] + " | " + row['contactNumber'];
+                lib.append(name, address, number);
                 link.appendChild(lib);
                 div.appendChild(link);
+                mainDiv.appendChild(div);
             });
+        }
+        function mapInit() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: 43.24, lng: 76.88 }, // Initial coordinates (New York City)
+                zoom: 12 // Initial zoom level
+            });
+            for(let lib of libs_marks) {
+                let marker = new google.maps.Marker({
+                    map: map,
+                    title: lib['name'],
+                    position: {'lat': lib['latitude'], 'lng': lib['longitude']}
+                });
+                markers += marker;
+            };
+
         }
     </script>
 </body>

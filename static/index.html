@@ -3,12 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Title</title>
-    <style>
+    <title>Libraria</title>
+    <link rel="icon" type="image/jpg" href="https://static.vecteezy.com/system/resources/thumbnails/002/219/582/small_2x/illustration-of-book-icon-free-vector.jpg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+     <style>
         body {
             margin: 0;
             padding: 0;
-            background-color: antiquewhite;
+            background: rgba(150, 214, 233, 0.479) ;
             height: 100%;
         }
         .mainBlock {
@@ -18,22 +22,47 @@
             margin: 20px 0 0 0;
         }
         #libraries {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 10px; /* Adjust as needed */
             overflow-x: auto;
             height: 30%;
         }
         .library {
             overflow-y: auto;
+            text-align: center;
             border: 1px solid white;
             background: white;
-            margin: 5px;
+            margin: 5px 30px 5px 30px;
             border-radius: 5px;
             padding: 5px;
         }
+        .library-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .library-address {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .library-number {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 10px;
+        }
         #books {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             width: 100%;
-            overflow-y: auto;
         }
         .book {
             width: 20vw;
@@ -57,6 +86,7 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             display: inline-block;
             width: 400px;
+            overflow: hidden;
         }
         .book-title {
             overflow: hidden;
@@ -93,18 +123,42 @@
         p {
             overflow-x: auto;
         }
+
+        .playfair-display-font {
+        font-family: "Playfair Display", serif;
+        font-optical-sizing: auto;
+        font-weight: 500;
+        font-style: normal;
+        }
+        .welcome{
+            text-align: center;
+            font-size: 46px;
+        }
+        .book-item {
+            text-align: center;
+        }
+        h2 {
+            text-align: center;
+            font-size: 28px;
+        }
+        
     </style>
+    <link rel="stylesheet" href="/static/header.css" type="text/css">
 </head>
 <body>
-<include src="header.html"></include>
-<h1>Main page</h1>
-<br>
+<p class="welcome">Welcome to the Libraria LMS Website</p>
 <div id="account"></div>
 <div class="mainBlock">
+    <h2>Popular Books of The Day</h2><br>
 <div id="books"></div>
     <br>
-</div><div class="mainBlock">
+    <h2>Libraries</h2><br>
 <div id="libraries"></div>
+</div><br>
+<div id ="about" style="border: 2px solid black; width: 1000px; text-align: center; position: relative; left: 300px; border-radius: 10px; background-color: rgb(157, 205, 167);">
+    <p style="font-family: Playfair Display; text-align: center;">Libraria is a website-based LMS for managing library activities and providing a link for connection between readers and librarians. 
+        <br> A product provides functions for library management and contains beneficial information about books and libraries.</p>
+        <p style="font-family: Playfair Display; text-align: center;">If you have questions and suggestions, please contact mail.libraria@gmail.com</p> 
 </div>
 <script>
     window.onload = function () {
@@ -141,49 +195,32 @@
     }
     function showBooks(data) {
         if(data === null) {
+            console.log("data is null");
             return;
         }
         let container = document.getElementById('books');
         data.forEach(jsonObject => {
+            const item = document.createElement('div');
             const div = document.createElement('div');
             const a = document.createElement('a');
             a.href = '/book/' + jsonObject['id'];
             a.style.textDecoration = 'none';
             a.style.color = 'inherit';
-            div.className = 'book-container';/*
-            Object.keys(jsonObject).forEach(key => {
-                // Create a paragraph element for each key-value pair
-                const paragraph = document.createElement('p');
-                paragraph.textContent = `${key}: ${jsonObject[key]}`;
-                div.appendChild(paragraph);
-            });*/
+            item.className = 'book-item';
+            div.className = 'book-container';
+
             const title = document.createElement('div'); title.className = 'line book-title';
             const author = document.createElement('div'); author.className = 'line book-author';
             const info = document.createElement('div'); info.className = 'line book-info';
-            const desc = document.createElement('div'); desc.className = 'book-description';
             title.innerText = jsonObject['name'];
             author.innerText = jsonObject['author'];
-            let text = "Year: " + jsonObject['year'] + " | Genre: " + jsonObject['genre'] + " | Language: " + jsonObject['language'] + " | Pages " + jsonObject['pageNumber'];
+            let text = "Year: " + jsonObject['year'] + " | Genre: " + jsonObject['genre']; // + " | Pages " + jsonObject['pageNumber']
             info.innerText = text;
-            desc.innerText = jsonObject['description'];
-            let width = title.style.width;
-            if(author.style.width > width) {
-                width = author.style.width;
-            }
-            if(info.style.width > width) {
-                width = info.style.width;
-            }
-            desc.style.maxWidth = `${width}px`;
-            if(jsonObject['description'].length > 500) {
-                desc.innerText = jsonObject['description'].substring(0, 500) + '...';
-            }
-            if(desc.innerText == '') {
-                desc.innerText = 'No description';
-            }
-            div.append(title, author, info, desc);
+            div.append(title, author, info);
 
             a.appendChild(div);
-            container.appendChild(a);
+            item.appendChild(a);
+            container.appendChild(item);
         });
     }
     function showLibraries(data) {
@@ -191,70 +228,58 @@
         data.forEach(function(line) {
             let block = document.createElement('div');
             block.className = 'library';
+            const div = document.createElement('div');
             const a = document.createElement('a');
             a.href = '/library/' + line['id'];
             a.style.textDecoration = 'none';
             a.style.color = 'inherit';
 
-            let ul = document.createElement('ul');
-            let name = document.createElement('li');
-            let email = document.createElement('li');
-            let address = document.createElement('li');
-            let number = document.createElement('li');
+            let name = document.createElement('p'); name.className = 'library-title';
+            let address = document.createElement('p'); address.className = 'library-address';
+            let number = document.createElement('p'); number.className = 'library-number';
             name.innerText = line['name'];
-            email.innerText = line['email'];
             address.innerText = line['address'];
-            number.innerText = line['contactNumber'];
-            ul.append(name,email,address,number);
-            block.appendChild(ul);
+            number.innerText = line['email'] + " | " + line['contactNumber'];
+            block.append(name, address, number);
             a.appendChild(block);
-            mainDiv.appendChild(a);
+            div.appendChild(a);
+            mainDiv.appendChild(div);
         });
     }
     function fetchAccount() {
         let account;
         fetch('/getAuth').then(response => response.json())
             .then(data => {
-                let obj = document.getElementById('header');
                 account = data;
                 if( data.hasOwnProperty('error')) {
                     console.log("Has error");
-                    let login = document.createElement("span");
-                    let linkAcc = document.createElement("a");
-                    linkAcc.href = "/login";
-                    linkAcc.innerText = "Login";
-                    login.appendChild(linkAcc);
-                    login.style.marginLeft = '10px';
-                    obj.appendChild(login);
-
-                    var register = document.createElement("span");
-                    var linkLib = document.createElement("a");
-                    linkLib.href = "/register";
-                    linkLib.innerText = "Register";
-                    register.appendChild(linkLib);
-                    register.style.marginLeft = '10px';
-                    obj.appendChild(register);
                 } else {
                     console.log("Doesn't have error", JSON.stringify(data));
-                    var name = document.createElement("span");
-                    name.style.marginLeft = '10px';
-                    var link = document.createElement("a");
-                    if(account.hasOwnProperty('firstName')) {
-                        link.href = "account/" + account.id;
-                        link.innerText = account.firstName + ' ' + account.lastName;
-                    } else {
-                        link.href = "library/" + account.id;
-                        link.innerText = account.name;
-                    }
-                    name.appendChild(link);
-                    obj.appendChild(name);
-                    var signout = document.createElement("span");
-                    signout.style.marginLeft = '15px';
-                    var outlink = document.createElement('button');
-                    outlink.addEventListener("click", confirmLogout);
-                    outlink.innerText = 'Sign Out';
-                    signout.appendChild(outlink);
-                    obj.appendChild(signout);
+                    let drop1 = document.getElementById('dropdown1');
+                    let drop2 = document.getElementById('dropdown2');
+                    let li1 = document.createElement('li');
+                    let li2 = document.createElement('li');
+                    drop1.innerHTML = '';
+                    drop2.innerHTML = '';
+                    let link = document.createElement('a');
+                    link.href = 'account/' + account.id;
+                    link.innerText = account.firstName + ' ' + account.lastName;
+                    link.style.textDecoration = "none";
+                    link.style.color = "white";
+                    li1.appendChild(link);
+                    drop1.appendChild(li1);
+                    let out = document.createElement('a');
+                    out.innerText = "Log Out";
+                    out.style.textDecoration = "none";
+                    out.style.color = "white";
+                    out.addEventListener("click", function() {
+                        let result = confirm("Are you sure you want to logout?");
+                        if(result) {
+                            window.location.href = '/unAuthorize';
+                        }
+                    });
+                    li2.appendChild(out);
+                    drop2.appendChild(li2);
                 }
             })
             .catch(error => {

@@ -18,7 +18,12 @@ func (s *LibServer) GetLibrariesByBookIDHandler(w http.ResponseWriter, r *http.R
 	if err != nil {
 		return err
 	}
-	return WriteJSON(w, http.StatusOK, libs)
+	var web_libs []types.LibraryWeb
+	for i := 0; i < len(*libs); i++ {
+		web := (*libs)[i].ConvertToWeb()
+		web_libs = append(web_libs, *web)
+	}
+	return WriteJSON(w, http.StatusOK, web_libs)
 }
 
 func (s *LibServer) GetBooksByLibraryIDHandler(w http.ResponseWriter, r *http.Request) error {

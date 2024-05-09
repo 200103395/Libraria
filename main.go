@@ -32,6 +32,9 @@ func main() {
 	lib := controllers.NewLibServer(":8000", store, *email)
 
 	//go store.ClearRequests()
+	//s, _ := bcrypt.GenerateFromPassword([]byte("Password"), bcrypt.DefaultCost)
+	//fmt.Println(string(s))
+	//$2a$10$iXXY02lkYivkjSs9Hr/MRe/wOw.E0WC0EdLSP9qjQaK6Az9GbCgSm
 	fmt.Println("Starting application")
 	lib.Run()
 

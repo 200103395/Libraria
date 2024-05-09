@@ -38,9 +38,7 @@ func (s *PostgresStorage) CreateTables() error {
     author varchar(400),
     year INT NOT NULL,
     genre TEXT NOT NULL,
-    description TEXT,
-    language VARCHAR(255),
-    page_number INT
+    description TEXT
 )`
 	_, err = s.DB.Exec(query)
 	if err != nil {

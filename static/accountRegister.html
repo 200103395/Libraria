@@ -2,47 +2,182 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Account registration</title>
+    <link rel="icon" type="image/jpg" href="https://static.vecteezy.com/system/resources/thumbnails/002/219/582/small_2x/illustration-of-book-icon-free-vector.jpg">
+    <style>
+        body{
+        background-image: url(https://assets.ltkcontent.com/images/34805/engage-reader_793b048514.jpg);
+        background-repeat: no-repeat;
+        background-size: cover;
+        padding: 0;
+        margin: 0;
+        text-decoration: none;
+        list-style: none;
+        box-sizing: border-box;
+        font-family: Montserrat;
+        }
+        .wrapper {
+            background-color: whitesmoke;
+            list-style-type: none;
+            padding: 10px;
+            margin-top: 130px;
+            border-radius: 3px;
+            height: 420px;  
+            width: 500px;
+            margin-left: 500px;
+        }
+        .form-row {
+            display: flex;
+            padding: .5em;
+        }
+        .form-row > label {
+            padding: .5em 1em .5em 0;
+            flex: 1;
+        }
+        .form-row > input {
+            flex: 2;
+        }
+        .form-row > input,
+        .form-row > button {
+            padding: .5em;
+        }
+        .form-row > button {
+        background: gray;
+        color: white;
+        border: 0;
+        }
+    </style>
+    <link rel="stylesheet" href="/static/header.css" type="text/css">
 </head>
 <body>
+    <nav>
+        <input type="checkbox" id="check">
+        <label for="check" class="checkbtn">
+            <i class="fas fa-bars"></i>
+        </label>
+        <a href="/."><label class="logo">Libraria</label></a>
+
+        <ul>
+            <li><a class="active" href="/.">Home</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="/search"><label>Search</label></a></li>
+            <div class="dropdown" id="dropdown1">
+                <li><a href="#" class="login">Login</a></li>
+                <div class="dropdown-content">
+                    <a href="/account/login">User</a>
+                    <a href="/library/login">Library</a>
+                </div>
+            </div>
+            <div class="dropdown2" id="dropdown2">
+                <li><a href="#">Register</a></li>
+                <div class="dropdown-content2">
+                    <a href="/account/register">User</a>
+                    <a href="/library/register">Library</a>
+                </div>
+            </div>
+        </ul>
+    </nav>
     <form method="post" id="myForm">
-        <label for="firstName">First Name: </label>
+    <ul class="wrapper">
+        <p style="text-align: center; font-size: larger; margin: 5px;">Register as User</p>
+        <li class="form-row">
+        <label for="firstName">First Name: </label><br>
         <input id="firstName" name="firstName" type="text" required maxlength="15"><br>
-        <label for="lastName">Last Name: </label>
+        </li>
+        <li class="form-row">
+        <label for="lastName">Last Name: </label><br>
         <input id="lastName" name="lastName" type="text" required maxlength="15"><br>
-        <label for="email">Email: </label>
+        </li>
+        <li class="form-row">
+        <label for="email">Email: </label><br>
         <input id="email" name="email" type="text" required><br>
-        <label for="password">Password: </label>
+        </li>
+        <li class="form-row">
+        <label for="password">Password: </label><br>    
         <input id="password" name="password" type="password" required><br>
-        <label for="passwordConfirm">Confirm Password: </label>
+        </li>
+        <li class="form-row">
+        <label for="passwordConfirm">Confirm Password: </label><br>
         <input id="passwordConfirm" name="passwordConfirm" type="password" required><br>
-        <input type="submit" value="Register">
+        </li>
+        <input type="submit" value="Register" style="padding: 5px; margin-top: 10px; float: right; border-radius: 5px;">
+        <li><a style="text-decoration: none; list-style-type: none; text-align: center; position: relative; left: 50px; top: 30px; font-size: larger;" href="/account/login"><p>Already have an account ? Log in</p></a></li>
+        <li><a style="text-decoration: none; list-style-type: none; text-align: center; position: relative; left: 20px; top: 30px; font-size: larger;" href="/."><p>Back to Home Page</p></a></li>
+    </ul>
     </form>
     <script>
-        document.getElementById("myForm").addEventListener("submit", function(event){
+        window.onload = fetchAccount;
+        function fetchAccount() {
+            let account;
+            fetch('/getAuth').then(response => response.json())
+                .then(data => {
+                    account = data;
+                    if( data.hasOwnProperty('error')) {
+                        console.log("Has error");
+                    } else {
+                        console.log("Doesn't have error", JSON.stringify(data));
+                        let drop1 = document.getElementById('dropdown1');
+                        let drop2 = document.getElementById('dropdown2');
+                        let li1 = document.createElement('li');
+                        let li2 = document.createElement('li');
+                        drop1.innerHTML = '';
+                        drop2.innerHTML = '';
+                        let link = document.createElement('a');
+                        link.href = '/account/' + account.id;
+                        link.innerText = account.firstName + ' ' + account.lastName;
+                        link.style.textDecoration = "none";
+                        link.style.color = "white";
+                        li1.appendChild(link);
+                        drop1.appendChild(li1);
+                        let out = document.createElement('a');
+                        out.innerText = "Log Out";
+                        out.style.textDecoration = "none";
+                        out.style.color = "white";
+                        out.addEventListener("click", function() {
+                            let result = confirm("Are you sure you want to logout?");
+                            if(result) {
+                                window.location.href = '/unAuthorize';
+                            }
+                        });
+                        li2.appendChild(out);
+                        drop2.appendChild(li2);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching account information: ', error);
+                });
+            console.log(account);
+        }
+        document.getElementById("myForm").addEventListener("submit", function (event) {
             event.preventDefault();
-            var formData = new FormData(this);
+            let formData = new FormData(this);
 
-            var jsonData = {};
-            formData.forEach(function (value, key){
+            let jsonData = {};
+            formData.forEach(function (value, key) {
                 jsonData[key] = value;
             });
 
-            fetch("/account/register",{
+            if(jsonData['password'] !== jsonData['passwordConfirm']) {
+                alert('Passwords are not the same');
+                return;
+            }
+
+            fetch("/account/register", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify(jsonData)
             }).then(response => {
-                if(response.ok) {
+                if (response.ok) {
                     window.location.href = "/"
                     alert("Registration successful");
                 } else {
                     alert("Error while registration");
-                    console.log(response);
                 }
             }).catch(error => {
+                console.log(jsonData);
+                console.log(JSON.stringify(jsonData));
                 console.error(error);
             });
         });

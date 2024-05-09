@@ -2,28 +2,87 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Account Page</title>
+    <link rel="icon" type="image/jpg" href="https://static.vecteezy.com/system/resources/thumbnails/002/219/582/small_2x/illustration-of-book-icon-free-vector.jpg">
     <style>
-        #books {
-            display: flex;
-            width: 100%;
-            overflow-y: auto;
+        body {
+            margin: 0;
+            padding: 0;
+            background: rgba(150, 214, 233, 0.479) ;
+            height: 100%;
         }
-        .book {
-            width: 20vw;
-            border: 1px solid black;
-            background: white;
-            margin: 5px;
-            border-radius: 5px;
-            padding: 5px;
+        #books {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px; /* Adjust as needed */
+            width: 100%;
+        }
+        .book-container {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 0 20px 20px 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+            width: 400px;
+            overflow: hidden;
+        }
+        .book-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .book-author {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-style: italic;
+            color: #555;
+            margin-bottom: 10px;
+        }
+        .book-info {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .container {
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 50px;
+        }
+        #name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        #email {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        #change {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
         }
     </style>
 </head>
 <body>
-<h1 id="firstName"></h1>
-<h1 id="lastName"></h1>
-<h1 id="email"></h1>
-<a href="/account/settings"><h1>Change Account Information</h1></a>
+<div class="container">
+    <p id="name"></p>
+    <p id="email"></p>
+    <p id="change"><a href="/account/settings">Change Account Information</a></p>
+</div>
+<h2 style="text-align: center; margin-bottom: 20px;">Last visited books</h2>
 <div id="books">
 
 </div>
@@ -35,8 +94,7 @@
       // Extract the content of the script element
       let scriptContent = scriptInHead.textContent;
       console.log(account);
-        document.getElementById("firstName").innerText = account.firstName;
-        document.getElementById("lastName").innerText = account.lastName;
+        document.getElementById("name").innerText = account.firstName + ' ' + account.lastName;
         document.getElementById("email").innerText = account.email;
   }
   function showBooks(data) {
@@ -44,21 +102,29 @@
       if (data.hasOwnProperty('error')) {
           return;
       }
-      let div = document.getElementById('books');
-      data.forEach(function(row) {
-          let link = document.createElement('a');
-          link.href = '/book/' + row['id'];
-          link.style.textDecoration = 'None';
-          link.style.color = 'inherit';
-          let book = document.createElement('div');
-          book.className = 'book';
-          Object.keys(row).forEach(key => {
-              const paragraph = document.createElement('p');
-              paragraph.textContent = `${key}: ${row[key]}`;
-              book.appendChild(paragraph);
-          });
-          link.appendChild(book);
-          div.appendChild(link);
+      let container = document.getElementById('books');
+      data.forEach(function(jsonObject) {
+          const item = document.createElement('div');
+          const div = document.createElement('div');
+          const a = document.createElement('a');
+          a.href = '/book/' + jsonObject['id'];
+          a.style.textDecoration = 'none';
+          a.style.color = 'inherit';
+          item.className = 'book-item';
+          div.className = 'book-container';
+
+          const title = document.createElement('div'); title.className = 'line book-title';
+          const author = document.createElement('div'); author.className = 'line book-author';
+          const info = document.createElement('div'); info.className = 'line book-info';
+          title.innerText = jsonObject['name'];
+          author.innerText = jsonObject['author'];
+          let text = "Year: " + jsonObject['year'] + " | Genre: " + jsonObject['genre']; // + " | Pages " + jsonObject['pageNumber']
+          info.innerText = text;
+          div.append(title, author, info);
+
+          a.appendChild(div);
+          item.appendChild(a);
+          container.appendChild(item);
       });
   }
   function fetchLastBooks() {
@@ -67,9 +133,60 @@
           .then(data => showBooks(data))
           .catch(error => console.error(error));
   }
+  function fetchAccount() {
+      let account;
+      fetch('/getAuth').then(response => response.json())
+          .then(data => {
+              account = data;
+              if( data.hasOwnProperty('error')) {
+                  console.log("Has error");
+              } else {
+                  console.log("Doesn't have error", JSON.stringify(data));
+                  let drop1 = document.getElementById('dropdown1');
+                  let drop2 = document.getElementById('dropdown2');
+                  let li1 = document.createElement('li');
+                  let li2 = document.createElement('li');
+                  drop1.innerHTML = '';
+                  drop2.innerHTML = '';
+                  let link = document.createElement('a');
+                  link.href = '/account/' + account.id;
+                  link.innerText = account.firstName + ' ' + account.lastName;
+                  link.style.textDecoration = "none";
+                  link.style.color = "white";
+                  li1.appendChild(link);
+                  drop1.appendChild(li1);
+                  let out = document.createElement('a');
+                  out.innerText = "Log Out";
+                  out.style.textDecoration = "none";
+                  out.style.color = "white";
+                  out.addEventListener("click", function() {
+                      let result = confirm("Are you sure you want to logout?");
+                      if(result) {
+                          window.location.href = '/unAuthorize';
+                      }
+                  });
+                  li2.appendChild(out);
+                  drop2.appendChild(li2);
+              }
+          })
+          .catch(error => {
+              console.error('Error fetching account information: ', error);
+          });
+      console.log(account);
+  }
+  function fetchHeader() {
+      fetch('/getHeader').then(response => response.text())
+          .then(html => {
+              document.body.innerHTML = html + document.body.innerHTML;
+              fetchAccount();
+          }).catch(error => {
+          console.error(error);
+      });
+  }
 
   // Call the function when the page loads
   window.onload = function() {
+      fetchHeader();
       displayJsonData();
       fetchLastBooks();
   }

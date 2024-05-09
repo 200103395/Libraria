@@ -2,27 +2,86 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <link rel="icon" type="image/jpg" href="https://static.vecteezy.com/system/resources/thumbnails/002/219/582/small_2x/illustration-of-book-icon-free-vector.jpg">
+    <title>Library</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC65D4aIoayQlkDFJJzBtqKVpIQHSEM2_4&libraries=places"></script>
     <style>
-        #books {
-            display: flex;
+        body {
+            margin: 0;
+            padding: 0;
+            background: rgba(150, 214, 233, 0.479);
+            height: 100%;
         }
-        .book {
+        #libraryName {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        #address {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        #email {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        #books {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px; /* Adjust as needed */
+            width: 100%;
+        }
+        .book-container {
             border: 1px solid #ccc;
-            padding: 10px;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 0 20px 20px 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+            width: 400px;
+            overflow: hidden;
+        }
+        .book-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .book-author {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-style: italic;
+            color: #555;
+            margin-bottom: 10px;
+        }
+        .book-info {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 14px;
+            color: #333;
             margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
-<h1 id="libraryName"></h1>
-<h1 id="email"></h1>
-<h1 id="address"></h1>
-<h1 id="contactNumber"></h1>
+<div style="text-align: center; margin-bottom: 20px">
+    <p id="libraryName"></p>
+    <p id="address"></p>
+    <p id="email"></p>
+</div>
 <div id="settings"></div>
 
-<div id="map" style="border: 1px; height: 400px; width: 400px;"></div>
+<div id="map" style="border: 1px; height: 300px; width: 1000px; margin-left: 250px; margin-bottom: 20px;"></div>
+<h2 style="text-align: center; margin-bottom: 20px">Featured Books</h2>
 <div id="books">
 
 </div>
@@ -49,10 +108,9 @@
         initMap();
         showSettings();
         console.log(lib);
-        document.getElementById("libraryName").innerText = lib.libraryName;
-        document.getElementById("email").innerText = lib.email;
+        document.getElementById("libraryName").innerText = lib.name;
         document.getElementById("address").innerText = lib.address;
-        document.getElementById("contactNumber").innerText = lib.contactNumber;
+        document.getElementById("email").innerText = lib.email + " | " + lib.contactNumber;
     }
     function showSettings() {
         fetch('/getAuth')
@@ -80,20 +138,29 @@
     function showBooks(books) {
         let container = document.getElementById('books');
         container.innerHTML = '';
+        console.log(books);
         books.forEach(jsonObject => {
+            const item = document.createElement('div');
             const div = document.createElement('div');
-            div.className = 'book';
             const a = document.createElement('a');
             a.href = '/book/' + jsonObject['id'];
             a.style.textDecoration = 'none';
             a.style.color = 'inherit';
-            Object.keys(jsonObject).forEach(key => {
-                const paragraph = document.createElement('p');
-                paragraph.textContent = `${key}: ${jsonObject[key]}`;
-                div.appendChild(paragraph);
-            });
+            item.className = 'book-item';
+            div.className = 'book-container';
+
+            const title = document.createElement('div'); title.className = 'line book-title';
+            const author = document.createElement('div'); author.className = 'line book-author';
+            const info = document.createElement('div'); info.className = 'line book-info';
+            title.innerText = jsonObject['name'];
+            author.innerText = jsonObject['author'];
+            let text = "Year: " + jsonObject['year'] + " | Genre: " + jsonObject['genre']; // + " | Pages " + jsonObject['pageNumber']
+            info.innerText = text;
+            div.append(title, author, info);
+
             a.appendChild(div);
-            container.appendChild(a);
+            item.appendChild(a);
+            container.appendChild(item);
         });
     }
     function fetchBooks() {
@@ -105,9 +172,66 @@
 
     // Call the function when the page loads
     window.onload = function() {
-        displayJsonData();
+        fetchHeader();
         fetchBooks();
+        fetchAccount();
+        let inter = setInterval(function() {
+            displayJsonData();
+        }, 500);
+        setTimeout(function() {
+            clearInterval(inter)
+        }, 500);
         //TODO: CREATE A SEARCH OR FILTER FEATURE
+    }
+    function fetchAccount() {
+        let account;
+        fetch('/getAuth').then(response => response.json())
+            .then(data => {
+                account = data;
+                if( data.hasOwnProperty('error')) {
+                    console.log("Has error");
+                } else {
+                    console.log("Doesn't have error", JSON.stringify(data));
+                    let drop1 = document.getElementById('dropdown1');
+                    let drop2 = document.getElementById('dropdown2');
+                    let li1 = document.createElement('li');
+                    let li2 = document.createElement('li');
+                    drop1.innerHTML = '';
+                    drop2.innerHTML = '';
+                    let link = document.createElement('a');
+                    link.href = '/account/' + account.id;
+                    link.innerText = account.firstName + ' ' + account.lastName;
+                    link.style.textDecoration = "none";
+                    link.style.color = "white";
+                    li1.appendChild(link);
+                    drop1.appendChild(li1);
+                    let out = document.createElement('a');
+                    out.innerText = "Log Out";
+                    out.style.textDecoration = "none";
+                    out.style.color = "white";
+                    out.addEventListener("click", function() {
+                        let result = confirm("Are you sure you want to logout?");
+                        if(result) {
+                            window.location.href = '/unAuthorize';
+                        }
+                    });
+                    li2.appendChild(out);
+                    drop2.appendChild(li2);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching account information: ', error);
+            });
+        console.log(account);
+    }
+    function fetchHeader() {
+        fetch('/getHeader').then(response => response.text())
+            .then(html => {
+                document.body.innerHTML = html + document.body.innerHTML;
+                fetchAccount();
+            }).catch(error => {
+            console.error(error);
+        });
     }
 </script>
 
